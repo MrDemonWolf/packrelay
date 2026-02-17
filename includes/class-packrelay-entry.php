@@ -49,9 +49,16 @@ class PackRelay_Entry {
 			$sanitized_fields[ absint( $field_id ) ] = sanitize_text_field( $value );
 		}
 
-		$ip = sanitize_text_field( $request->get_header( 'X-Forwarded-For' ) ?? '' );
-		if ( empty( $ip ) ) {
-			$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
+		$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
+
+		$forwarded_for = $request->get_header( 'X-Forwarded-For' );
+		if ( ! empty( $forwarded_for ) ) {
+			$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
+			$candidate_ip = $ips[0];
+
+			if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
+				$ip = $candidate_ip;
+			}
 		}
 
 		$entry_data = array(

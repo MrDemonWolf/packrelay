@@ -150,7 +150,7 @@ class PackRelay_Settings {
 			array(
 				'field' => 'allowed_origins',
 				'type'  => 'text',
-				'desc'  => __( 'Comma-separated list of allowed CORS origins. Leave blank to allow all.', 'packrelay' ),
+				'desc'  => __( 'Comma-separated list of allowed CORS origins (e.g., https://app.example.com, capacitor://localhost). Cross-origin requests are blocked when blank.', 'packrelay' ),
 			)
 		);
 	}

@@ -72,7 +72,13 @@ export function ReCaptcha({ siteKey, onToken, onError, action = 'submit' }: ReCa
   `;
 
   const onMessage = useCallback((event: any) => {
-    const data = JSON.parse(event.nativeEvent.data);
+    let data;
+    try {
+      data = JSON.parse(event.nativeEvent.data);
+    } catch {
+      onError?.('Failed to parse reCAPTCHA response');
+      return;
+    }
     if (data.type === 'token') {
       onToken(data.token);
     } else if (data.type === 'error' && onError) {
@@ -92,9 +98,9 @@ export function ReCaptcha({ siteKey, onToken, onError, action = 'submit' }: ReCa
 }
 ```
 
-### Option B: Using @anthropic/recaptcha-react-native
+### Option B: Using react-native-recaptcha-that-works
 
-If you prefer a native solution, there are community packages that wrap the reCAPTCHA SDK natively.
+If you prefer a native solution, [`react-native-recaptcha-that-works`](https://github.com/nicksenger/react-native-recaptcha-that-works) wraps the reCAPTCHA SDK for React Native.
 
 ## 3. Fetching Form Fields
 
@@ -154,6 +160,13 @@ export async function submitForm(
       recaptcha_token: recaptchaToken,
     }),
   });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(
+      errorBody?.message || `Form submission failed: ${response.status}`
+    );
+  }
 
   return response.json();
 }

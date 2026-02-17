@@ -31,7 +31,7 @@ PackRelay is a WordPress plugin that adds REST API endpoints to WPForms for exte
 
 ### Request Flow
 
-```
+```text
 POST /packrelay/v1/submit/{form_id}
   → REST_API::handle_submit()
     → is_form_allowed() — check allowlist
@@ -84,8 +84,8 @@ apply_filters( 'packrelay_allowed_form_ids', $allowed_form_ids );
 Tests use **PHPUnit 10 + Brain Monkey + Mockery** — no WordPress installation needed.
 
 ```bash
-make test                           # Run all tests
-vendor/bin/phpunit tests/test-recaptcha.php  # Run single test file
+make test                                    # Run all tests
+vendor/bin/phpunit tests/ReCaptchaTest.php   # Run single test file
 vendor/bin/phpunit --filter test_name        # Run single test
 ```
 
@@ -93,7 +93,7 @@ vendor/bin/phpunit --filter test_name        # Run single test
 
 - `tests/bootstrap.php` — Defines WP constants, stubs WP classes, loads plugin files
 - `tests/TestCase.php` — Base class with Brain Monkey setUp/tearDown + common WP stubs
-- `tests/test-*.php` — Individual test files for each class
+- `tests/*Test.php` — Individual test files for each class (e.g., `EntryTest.php`, `RestApiTest.php`)
 
 ## REST API Endpoints
 

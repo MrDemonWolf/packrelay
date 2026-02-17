@@ -47,11 +47,15 @@ class PackRelay_REST_API {
 
 	/**
 	 * Constructor.
+	 *
+	 * @param PackRelay_ReCaptcha|null    $recaptcha    Optional reCAPTCHA instance.
+	 * @param PackRelay_Entry|null        $entry        Optional entry instance.
+	 * @param PackRelay_Notification|null $notification Optional notification instance.
 	 */
-	public function __construct() {
-		$this->recaptcha    = new PackRelay_ReCaptcha();
-		$this->entry        = new PackRelay_Entry();
-		$this->notification = new PackRelay_Notification();
+	public function __construct( $recaptcha = null, $entry = null, $notification = null ) {
+		$this->recaptcha    = $recaptcha ?: new PackRelay_ReCaptcha();
+		$this->entry        = $entry ?: new PackRelay_Entry();
+		$this->notification = $notification ?: new PackRelay_Notification();
 	}
 
 	/**
@@ -133,10 +137,7 @@ class PackRelay_REST_API {
 
 		// Verify reCAPTCHA.
 		$token = $request->get_param( 'recaptcha_token' );
-		$ip    = sanitize_text_field( $request->get_header( 'X-Forwarded-For' ) ?? '' );
-		if ( empty( $ip ) ) {
-			$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
-		}
+		$ip    = $this->get_client_ip( $request );
 
 		$recaptcha_result = $this->recaptcha->verify( $token, $form_id, $ip );
 		if ( ! $recaptcha_result['success'] ) {
@@ -278,9 +279,7 @@ class PackRelay_REST_API {
 		$origin          = $request->get_header( 'Origin' );
 		$allowed_origins = $this->get_allowed_origins();
 
-		if ( empty( $allowed_origins ) ) {
-			header( 'Access-Control-Allow-Origin: *' );
-		} elseif ( $origin && in_array( $origin, $allowed_origins, true ) ) {
+		if ( ! empty( $allowed_origins ) && $origin && in_array( $origin, $allowed_origins, true ) ) {
 			header( 'Access-Control-Allow-Origin: ' . $origin );
 		}
 
@@ -298,7 +297,7 @@ class PackRelay_REST_API {
 	 */
 	private function is_form_allowed( $form_id ) {
 		$settings    = PackRelay_Settings::get_settings();
-		$allowed_ids = array_filter( array_map( 'absint', array_map( 'trim', explode( ',', $settings['allowed_form_ids'] ) ) ) );
+		$allowed_ids = array_filter( array_map( 'absint', array_map( 'trim', explode( ',', $settings['allowed_form_ids'] ?? '' ) ) ) );
 
 		/**
 		 * Filter allowed form IDs.
@@ -372,6 +371,32 @@ class PackRelay_REST_API {
 		}
 
 		return array_filter( array_map( 'trim', explode( ',', $origins ) ) );
+	}
+
+	/**
+	 * Get the client IP address from the request.
+	 *
+	 * Uses REMOTE_ADDR as the primary source. Falls back to the first valid
+	 * IP from X-Forwarded-For only when the header is present.
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return string
+	 */
+	private function get_client_ip( $request ) {
+		$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
+
+		$forwarded_for = $request->get_header( 'X-Forwarded-For' );
+		if ( ! empty( $forwarded_for ) ) {
+			// X-Forwarded-For may contain a comma-separated list; take the first entry.
+			$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
+			$candidate_ip = $ips[0];
+
+			if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
+				$ip = $candidate_ip;
+			}
+		}
+
+		return $ip;
 	}
 
 	/**

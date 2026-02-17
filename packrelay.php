@@ -18,7 +18,7 @@
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: packrelay
  * Requires at least: 6.0
- * Requires PHP: 8.0
+ * Requires PHP: 8.1
  */
 
 if ( ! defined( 'ABSPATH' ) ) {

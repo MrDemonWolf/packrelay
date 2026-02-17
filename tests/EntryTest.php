@@ -42,7 +42,7 @@ class EntryTest extends TestCase {
 
 		Functions\expect( 'apply_filters' )
 			->with( 'packrelay_pre_save_fields', \Mockery::any(), 123, \Mockery::any() )
-			->andReturnUsing( function ( $hook, $fields ) {
+			->andReturnUsing( function ( $_hook, $fields ) {
 				return $fields;
 			} );
 
@@ -73,7 +73,7 @@ class EntryTest extends TestCase {
 
 		Functions\expect( 'apply_filters' )
 			->with( 'packrelay_pre_save_fields', \Mockery::any(), 123, \Mockery::any() )
-			->andReturnUsing( function ( $hook, $fields ) {
+			->andReturnUsing( function ( $_hook, $fields ) {
 				return $fields;
 			} );
 
@@ -107,7 +107,7 @@ class EntryTest extends TestCase {
 
 		Functions\expect( 'apply_filters' )
 			->with( 'packrelay_pre_save_fields', \Mockery::any(), 123, \Mockery::any() )
-			->andReturnUsing( function ( $hook, $fields ) {
+			->andReturnUsing( function ( $_hook, $fields ) {
 				return $fields;
 			} );
 

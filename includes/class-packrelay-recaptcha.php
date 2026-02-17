@@ -55,7 +55,8 @@ class PackRelay_ReCaptcha {
 		$response = wp_remote_post(
 			self::VERIFY_URL,
 			array(
-				'body' => array(
+				'timeout' => 3,
+				'body'    => array(
 					'secret'   => $secret_key,
 					'response' => $token,
 					'remoteip' => $ip,
@@ -90,7 +91,7 @@ class PackRelay_ReCaptcha {
 			);
 		}
 
-		$threshold = floatval( $settings['recaptcha_threshold'] ?? 0.5 );
+		$threshold = floatval( $settings['recaptcha_threshold'] );
 
 		/**
 		 * Filter the reCAPTCHA score threshold per form.
