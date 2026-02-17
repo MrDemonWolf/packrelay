@@ -1,0 +1,55 @@
+name: Build ZIP
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build Plugin ZIP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ZIP
+        run: |
+          mkdir -p build/packrelay
+          rsync -av --exclude-from=.distignore . build/packrelay/
+          cd build && zip -r packrelay.zip packrelay/
+          rm -rf packrelay
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: packrelay-dev
+          path: build/packrelay.zip
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const botComment = comments.find(c =>
+              c.user.type === 'Bot' && c.body.includes('packrelay-dev')
+            );
+            const body = `📦 **Dev build ready!** Download the plugin ZIP from the [Actions artifacts](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}).`;
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
