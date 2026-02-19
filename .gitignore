@@ -28,3 +28,6 @@ Thumbs.db
 # Composer
 composer.lock
 composer.phar
+
+# Claude Code
+.claude
