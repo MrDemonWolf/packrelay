@@ -46,12 +46,20 @@ class PackRelay {
 	protected $rest_api;
 
 	/**
+	 * Entries page instance.
+	 *
+	 * @var PackRelay_Entries_Page
+	 */
+	protected $entries_page;
+
+	/**
 	 * Constructor.
 	 */
 	private function __construct() {
-		$this->loader   = new PackRelay_Loader();
-		$this->settings = new PackRelay_Settings();
-		$this->rest_api = new PackRelay_REST_API();
+		$this->loader       = new PackRelay_Loader();
+		$this->settings     = new PackRelay_Settings();
+		$this->rest_api     = new PackRelay_REST_API();
+		$this->entries_page = new PackRelay_Entries_Page();
 
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
@@ -74,9 +82,10 @@ class PackRelay {
 	 * Register admin-side hooks.
 	 */
 	private function define_admin_hooks() {
+		$this->loader->add_action( 'admin_menu', $this->entries_page, 'add_menu_pages' );
 		$this->loader->add_action( 'admin_menu', $this->settings, 'add_settings_page' );
 		$this->loader->add_action( 'admin_init', $this->settings, 'register_settings' );
-		$this->loader->add_action( 'admin_notices', $this, 'wpforms_dependency_notice' );
+		$this->loader->add_action( 'admin_notices', $this, 'provider_dependency_notice' );
 	}
 
 	/**
@@ -88,13 +97,21 @@ class PackRelay {
 	}
 
 	/**
-	 * Show admin notice if WPForms is not active.
+	 * Show admin notice if the configured provider is not active.
 	 */
-	public function wpforms_dependency_notice() {
-		if ( get_transient( 'packrelay_wpforms_notice' ) || ! PackRelay_Activator::is_wpforms_active() ) {
-			delete_transient( 'packrelay_wpforms_notice' );
+	public function provider_dependency_notice() {
+		if ( get_transient( 'packrelay_provider_notice' ) || ! PackRelay_Activator::is_provider_available() ) {
+			delete_transient( 'packrelay_provider_notice' );
+
+			$provider = PackRelay_Provider_Factory::create();
+			$label    = $provider->get_label();
+
 			echo '<div class="notice notice-warning"><p>';
-			echo esc_html__( 'PackRelay requires WPForms to be installed and active. Please install WPForms to use PackRelay.', 'packrelay' );
+			printf(
+				/* translators: %s: form builder name */
+				esc_html__( 'PackRelay requires %s to be installed and active. Please install it or change the form provider in PackRelay settings.', 'packrelay' ),
+				esc_html( $label )
+			);
 			echo '</p></div>';
 		}
 	}

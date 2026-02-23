@@ -130,13 +130,91 @@ if ( ! class_exists( 'WP_REST_Server' ) ) {
 	}
 }
 
+// Stub WP_List_Table class.
+if ( ! class_exists( 'WP_List_Table' ) ) {
+	class WP_List_Table {
+		public $items = array();
+		public $_column_headers = array();
+		protected $_pagination_args = array();
+
+		public function __construct( $args = array() ) {}
+
+		public function get_columns() {
+			return array();
+		}
+
+		public function get_pagenum() {
+			return 1;
+		}
+
+		public function set_pagination_args( $args ) {
+			$this->_pagination_args = $args;
+		}
+
+		public function row_actions( $actions, $always_visible = false ) {
+			$action_count = count( $actions );
+			if ( ! $action_count ) {
+				return '';
+			}
+
+			$out = '<div class="row-actions">';
+			$i   = 0;
+			foreach ( $actions as $action => $link ) {
+				++$i;
+				$sep  = ( $i < $action_count ) ? ' | ' : '';
+				$out .= "<span class='$action'>$link$sep</span>";
+			}
+			$out .= '</div>';
+
+			return $out;
+		}
+
+		public function prepare_items() {}
+
+		public function display() {}
+
+		public function get_bulk_actions() {
+			return array();
+		}
+
+		public function no_items() {}
+	}
+}
+
+// Define WordPress constants.
+if ( ! defined( 'ARRAY_A' ) ) {
+	define( 'ARRAY_A', 'ARRAY_A' );
+}
+
+// Create stub wp-admin/includes/upgrade.php if it doesn't exist.
+$upgrade_dir = ABSPATH . 'wp-admin/includes';
+if ( ! is_dir( $upgrade_dir ) ) {
+	mkdir( $upgrade_dir, 0755, true );
+}
+if ( ! file_exists( $upgrade_dir . '/upgrade.php' ) ) {
+	file_put_contents( $upgrade_dir . '/upgrade.php', "<?php\n// Stub for tests.\nif ( ! function_exists( 'dbDelta' ) ) {\n\tfunction dbDelta( \$queries = '', \$execute = true ) { return array(); }\n}\n" );
+}
+
+// Stub is_wp_error function.
+if ( ! function_exists( 'is_wp_error' ) ) {
+	function is_wp_error( $thing ) {
+		return $thing instanceof WP_Error;
+	}
+}
+
 // Load plugin files.
+require_once __DIR__ . '/../includes/providers/class-packrelay-provider.php';
+require_once __DIR__ . '/../includes/providers/class-packrelay-provider-divi.php';
+require_once __DIR__ . '/../includes/providers/class-packrelay-provider-wpforms.php';
+require_once __DIR__ . '/../includes/providers/class-packrelay-provider-gravityforms.php';
+require_once __DIR__ . '/../includes/class-packrelay-provider-factory.php';
 require_once __DIR__ . '/../includes/class-packrelay-loader.php';
 require_once __DIR__ . '/../includes/class-packrelay-activator.php';
 require_once __DIR__ . '/../includes/class-packrelay-deactivator.php';
 require_once __DIR__ . '/../includes/class-packrelay-settings.php';
-require_once __DIR__ . '/../includes/class-packrelay-recaptcha.php';
-require_once __DIR__ . '/../includes/class-packrelay-entry.php';
-require_once __DIR__ . '/../includes/class-packrelay-notification.php';
+require_once __DIR__ . '/../includes/class-packrelay-appcheck.php';
+require_once __DIR__ . '/../includes/class-packrelay-entry-store.php';
+require_once __DIR__ . '/../includes/class-packrelay-entries-list-table.php';
+require_once __DIR__ . '/../includes/class-packrelay-entries-page.php';
 require_once __DIR__ . '/../includes/class-packrelay-rest-api.php';
 require_once __DIR__ . '/../includes/class-packrelay.php';

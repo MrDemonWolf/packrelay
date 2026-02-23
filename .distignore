@@ -9,7 +9,10 @@ composer.phar
 Makefile
 phpunit.xml.dist
 tests
-vendor
+vendor/bin
+vendor/phpunit
+vendor/brain
+vendor/mockery
 node_modules
 CLAUDE.md
 MOBILE_INTEGRATION.md
@@ -18,3 +21,4 @@ MOBILE_INTEGRATION.md
 *.log
 *.sql
 *.sqlite
+wp-admin

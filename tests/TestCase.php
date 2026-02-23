@@ -72,7 +72,57 @@ abstract class TestCase extends PHPUnitTestCase {
 				'plugin_basename'     => function ( $file ) {
 					return 'packrelay/' . basename( $file );
 				},
-			)
+				'shortcode_parse_atts' => function ( $text ) {
+					$atts    = array();
+					$text    = preg_replace( "/[\x{00a0}\x{200b}]+/u", ' ', $text );
+					if ( preg_match_all( '/(\w+)\s*=\s*"([^"]*)"(?:\s|$)|(\w+)\s*=\s*\'([^\']*)\'(?:\s|$)|(\w+)\s*=\s*([^\s\'"]+)(?:\s|$)/', $text, $match, PREG_SET_ORDER ) ) {
+						foreach ( $match as $m ) {
+							if ( ! empty( $m[1] ) ) {
+								$atts[ strtolower( $m[1] ) ] = $m[2];
+							} elseif ( ! empty( $m[3] ) ) {
+								$atts[ strtolower( $m[3] ) ] = $m[4];
+							} elseif ( ! empty( $m[5] ) ) {
+								$atts[ strtolower( $m[5] ) ] = $m[6];
+							}
+						}
+					}
+					return $atts;
+				},
+				'selected'            => function ( $selected, $current = true, $echo = true ) {
+					$result = ( (string) $selected === (string) $current ) ? ' selected="selected"' : '';
+					if ( $echo ) {
+						echo $result;
+					}
+					return $result;
+				},
+				'submit_button'       => function () {},
+				'add_query_arg'       => function ( $args, $url = '' ) {
+					return $url . '?' . http_build_query( $args );
+				},
+				'admin_url'           => function ( $path = '' ) {
+					return 'https://example.com/wp-admin/' . $path;
+				},
+				'wp_nonce_url'        => function ( $url, $action = '' ) {
+					return $url . '&_wpnonce=test';
+				},
+				'wp_verify_nonce'     => function () {
+					return true;
+				},
+				'get_admin_page_title' => function () {
+					return 'PackRelay Settings';
+				},
+				'current_user_can'    => function () {
+					return true;
+				},
+				'settings_fields'     => function () {},
+				'do_settings_sections' => function () {},
+				'esc_url'             => function ( $url ) {
+					return $url;
+				},
+				'esc_js'              => function ( $text ) {
+					return $text;
+				},
+				)
 		);
 	}
 

@@ -26,12 +26,11 @@ class CoreTest extends TestCase {
 				'get_option' => function ( $key, $default = false ) {
 					if ( 'packrelay_settings' === $key ) {
 						return array(
-							'recaptcha_site_key'   => '',
-							'recaptcha_secret_key' => '',
-							'recaptcha_threshold'  => 0.5,
-							'notification_email'   => '',
-							'allowed_form_ids'     => '',
-							'allowed_origins'      => '',
+							'form_provider'       => 'divi',
+							'firebase_project_id' => 'mrdemonwolf-official-app',
+							'notification_email'  => '',
+							'allowed_form_ids'    => '',
+							'allowed_origins'     => '',
 						);
 					}
 					return $default;
@@ -78,5 +77,20 @@ class CoreTest extends TestCase {
 
 		$hook_names = array_column( $filters, 'hook' );
 		$this->assertContains( 'rest_pre_serve_request', $hook_names );
+	}
+
+	public function test_provider_dependency_notice_method_exists(): void {
+		$instance = \PackRelay::get_instance();
+		$loader   = $instance->get_loader();
+		$actions  = $loader->get_actions();
+
+		$callbacks = array();
+		foreach ( $actions as $action ) {
+			if ( 'admin_notices' === $action['hook'] ) {
+				$callbacks[] = $action['callback'];
+			}
+		}
+
+		$this->assertContains( 'provider_dependency_notice', $callbacks );
 	}
 }

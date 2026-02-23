@@ -19,6 +19,6 @@ class PackRelay_Deactivator {
 	 * Run on plugin deactivation.
 	 */
 	public static function deactivate() {
-		delete_transient( 'packrelay_wpforms_notice' );
+		delete_transient( 'packrelay_provider_notice' );
 	}
 }

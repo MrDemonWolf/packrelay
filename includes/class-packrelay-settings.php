@@ -32,12 +32,13 @@ class PackRelay_Settings {
 	const PAGE_SLUG = 'packrelay';
 
 	/**
-	 * Add the settings page under the Settings menu.
+	 * Add the settings page as a submenu under PackRelay.
 	 */
 	public function add_settings_page() {
-		add_options_page(
+		add_submenu_page(
+			'packrelay-entries',
 			__( 'PackRelay Settings', 'packrelay' ),
-			__( 'PackRelay', 'packrelay' ),
+			__( 'Settings', 'packrelay' ),
 			'manage_options',
 			self::PAGE_SLUG,
 			array( $this, 'render_settings_page' )
@@ -58,52 +59,45 @@ class PackRelay_Settings {
 			)
 		);
 
-		// reCAPTCHA section.
+		// Provider section.
 		add_settings_section(
-			'packrelay_recaptcha',
-			__( 'Google reCAPTCHA v3', 'packrelay' ),
-			array( $this, 'render_recaptcha_section' ),
+			'packrelay_provider',
+			__( 'Form Provider', 'packrelay' ),
+			array( $this, 'render_provider_section' ),
 			self::PAGE_SLUG
 		);
 
 		add_settings_field(
-			'recaptcha_site_key',
-			__( 'Site Key', 'packrelay' ),
+			'form_provider',
+			__( 'Form Builder', 'packrelay' ),
+			array( $this, 'render_select_field' ),
+			self::PAGE_SLUG,
+			'packrelay_provider',
+			array(
+				'field'   => 'form_provider',
+				'options' => $this->get_provider_options(),
+				'desc'    => __( 'Select the form builder plugin to use with PackRelay.', 'packrelay' ),
+			)
+		);
+
+		// App Check section.
+		add_settings_section(
+			'packrelay_appcheck',
+			__( 'Firebase App Check', 'packrelay' ),
+			array( $this, 'render_appcheck_section' ),
+			self::PAGE_SLUG
+		);
+
+		add_settings_field(
+			'firebase_project_id',
+			__( 'Firebase Project ID', 'packrelay' ),
 			array( $this, 'render_text_field' ),
 			self::PAGE_SLUG,
-			'packrelay_recaptcha',
+			'packrelay_appcheck',
 			array(
-				'field' => 'recaptcha_site_key',
+				'field' => 'firebase_project_id',
 				'type'  => 'text',
-				'desc'  => __( 'Your Google reCAPTCHA v3 site key.', 'packrelay' ),
-			)
-		);
-
-		add_settings_field(
-			'recaptcha_secret_key',
-			__( 'Secret Key', 'packrelay' ),
-			array( $this, 'render_text_field' ),
-			self::PAGE_SLUG,
-			'packrelay_recaptcha',
-			array(
-				'field' => 'recaptcha_secret_key',
-				'type'  => 'password',
-				'desc'  => __( 'Your Google reCAPTCHA v3 secret key.', 'packrelay' ),
-			)
-		);
-
-		add_settings_field(
-			'recaptcha_threshold',
-			__( 'Score Threshold', 'packrelay' ),
-			array( $this, 'render_number_field' ),
-			self::PAGE_SLUG,
-			'packrelay_recaptcha',
-			array(
-				'field' => 'recaptcha_threshold',
-				'min'   => 0,
-				'max'   => 1,
-				'step'  => 0.1,
-				'desc'  => __( 'Minimum reCAPTCHA score to accept (0.0–1.0, default: 0.5).', 'packrelay' ),
+				'desc'  => __( 'Your Firebase project ID for App Check verification.', 'packrelay' ),
 			)
 		);
 
@@ -137,7 +131,7 @@ class PackRelay_Settings {
 			array(
 				'field' => 'allowed_form_ids',
 				'type'  => 'text',
-				'desc'  => __( 'Comma-separated list of WPForms form IDs that PackRelay can accept submissions for.', 'packrelay' ),
+				'desc'  => __( 'Comma-separated list of form IDs that PackRelay can accept submissions for. For Divi, use post_id:form_index format (e.g. 42:0).', 'packrelay' ),
 			)
 		);
 
@@ -167,10 +161,17 @@ class PackRelay_Settings {
 	}
 
 	/**
-	 * Render the reCAPTCHA section description.
+	 * Render the Provider section description.
 	 */
-	public function render_recaptcha_section() {
-		echo '<p>' . esc_html__( 'Configure your Google reCAPTCHA v3 keys for spam protection.', 'packrelay' ) . '</p>';
+	public function render_provider_section() {
+		echo '<p>' . esc_html__( 'Choose which form builder PackRelay should integrate with.', 'packrelay' ) . '</p>';
+	}
+
+	/**
+	 * Render the App Check section description.
+	 */
+	public function render_appcheck_section() {
+		echo '<p>' . esc_html__( 'Configure your Firebase project for App Check verification.', 'packrelay' ) . '</p>';
 	}
 
 	/**
@@ -200,29 +201,34 @@ class PackRelay_Settings {
 	}
 
 	/**
-	 * Render a number input field.
+	 * Render a select field.
 	 *
-	 * @param array $args Field arguments.
+	 * @param array $args Field arguments with 'field', 'options', and 'desc'.
 	 */
-	public function render_number_field( $args ) {
+	public function render_select_field( $args ) {
 		$settings = self::get_settings();
 		$field    = $args['field'];
-		$value    = $settings[ $field ] ?? 0.5;
-		$min      = $args['min'] ?? 0;
-		$max      = $args['max'] ?? 1;
-		$step     = $args['step'] ?? 0.1;
+		$value    = $settings[ $field ] ?? '';
+		$options  = $args['options'] ?? array();
 		$desc     = $args['desc'] ?? '';
 
 		printf(
-			'<input type="number" id="packrelay_%s" name="%s[%s]" value="%s" min="%s" max="%s" step="%s" />',
+			'<select id="packrelay_%s" name="%s[%s]">',
 			esc_attr( $field ),
 			esc_attr( self::OPTION_NAME ),
-			esc_attr( $field ),
-			esc_attr( $value ),
-			esc_attr( $min ),
-			esc_attr( $max ),
-			esc_attr( $step )
+			esc_attr( $field )
 		);
+
+		foreach ( $options as $opt_value => $opt_label ) {
+			printf(
+				'<option value="%s" %s>%s</option>',
+				esc_attr( $opt_value ),
+				selected( $value, $opt_value, false ),
+				esc_html( $opt_label )
+			);
+		}
+
+		echo '</select>';
 
 		if ( $desc ) {
 			printf( '<p class="description">%s</p>', esc_html( $desc ) );
@@ -238,15 +244,14 @@ class PackRelay_Settings {
 	public function sanitize_settings( $input ) {
 		$sanitized = array();
 
-		$sanitized['recaptcha_site_key']   = sanitize_text_field( $input['recaptcha_site_key'] ?? '' );
-		$sanitized['recaptcha_secret_key'] = sanitize_text_field( $input['recaptcha_secret_key'] ?? '' );
-		$sanitized['recaptcha_threshold']  = floatval( $input['recaptcha_threshold'] ?? 0.5 );
-		$sanitized['notification_email']   = sanitize_email( $input['notification_email'] ?? '' );
-		$sanitized['allowed_form_ids']     = sanitize_text_field( $input['allowed_form_ids'] ?? '' );
-		$sanitized['allowed_origins']      = sanitize_text_field( $input['allowed_origins'] ?? '' );
+		$valid_providers = array( 'divi', 'wpforms', 'gravityforms' );
+		$provider        = sanitize_text_field( $input['form_provider'] ?? 'divi' );
+		$sanitized['form_provider'] = in_array( $provider, $valid_providers, true ) ? $provider : 'divi';
 
-		// Clamp threshold between 0 and 1.
-		$sanitized['recaptcha_threshold'] = max( 0.0, min( 1.0, $sanitized['recaptcha_threshold'] ) );
+		$sanitized['firebase_project_id'] = sanitize_text_field( $input['firebase_project_id'] ?? '' );
+		$sanitized['notification_email']  = sanitize_email( $input['notification_email'] ?? '' );
+		$sanitized['allowed_form_ids']    = sanitize_text_field( $input['allowed_form_ids'] ?? '' );
+		$sanitized['allowed_origins']     = sanitize_text_field( $input['allowed_origins'] ?? '' );
 
 		return $sanitized;
 	}
@@ -270,12 +275,31 @@ class PackRelay_Settings {
 	 */
 	public static function get_defaults() {
 		return array(
-			'recaptcha_site_key'   => '',
-			'recaptcha_secret_key' => '',
-			'recaptcha_threshold'  => 0.5,
-			'notification_email'   => '',
-			'allowed_form_ids'     => '',
-			'allowed_origins'      => '',
+			'form_provider'       => 'divi',
+			'firebase_project_id' => 'mrdemonwolf-official-app',
+			'notification_email'  => '',
+			'allowed_form_ids'    => '',
+			'allowed_origins'     => '',
 		);
+	}
+
+	/**
+	 * Get provider options for the select field.
+	 *
+	 * @return array
+	 */
+	private function get_provider_options() {
+		$providers = PackRelay_Provider_Factory::get_available_providers();
+		$options   = array();
+
+		foreach ( $providers as $slug => $data ) {
+			$label = $data['label'];
+			if ( ! $data['available'] ) {
+				$label .= ' ' . __( '(not installed)', 'packrelay' );
+			}
+			$options[ $slug ] = $label;
+		}
+
+		return $options;
 	}
 }

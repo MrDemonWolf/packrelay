@@ -1,6 +1,6 @@
 <?php
 /**
- * PackRelay — WPForms REST API Bridge
+ * PackRelay — Multi-Builder REST API Bridge
  *
  * @package    PackRelay
  * @author     MrDemonWolf
@@ -10,7 +10,7 @@
  * @wordpress-plugin
  * Plugin Name: PackRelay
  * Plugin URI:  https://github.com/mrdemonwolf/packrelay
- * Description: Accept WPForms submissions from external apps and mobile clients via REST API with Google reCAPTCHA v3 protection.
+ * Description: Accept form submissions from external apps and mobile clients via REST API with Firebase App Check protection. Supports Divi, WPForms, and Gravity Forms.
  * Version:     1.0.0
  * Author:      MrDemonWolf, Inc.
  * Author URI:  https://mrdemonwolf.com
@@ -31,13 +31,34 @@ define( 'PACKRELAY_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PACKRELAY_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'PACKRELAY_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
+require_once PACKRELAY_PLUGIN_DIR . 'vendor/autoload.php';
+
+// Auto-update from GitHub releases.
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$packrelay_update_checker = PucFactory::buildUpdateChecker(
+	'https://github.com/mrdemonwolf/packrelay/',
+	PACKRELAY_PLUGIN_FILE,
+	'packrelay'
+);
+$packrelay_update_checker->getVcsApi()->enableReleaseAssets();
+
+// Provider abstraction.
+require_once PACKRELAY_PLUGIN_DIR . 'includes/providers/class-packrelay-provider.php';
+require_once PACKRELAY_PLUGIN_DIR . 'includes/providers/class-packrelay-provider-divi.php';
+require_once PACKRELAY_PLUGIN_DIR . 'includes/providers/class-packrelay-provider-wpforms.php';
+require_once PACKRELAY_PLUGIN_DIR . 'includes/providers/class-packrelay-provider-gravityforms.php';
+require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-provider-factory.php';
+
+// Core classes.
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-loader.php';
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-activator.php';
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-deactivator.php';
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-settings.php';
-require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-recaptcha.php';
-require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-entry.php';
-require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-notification.php';
+require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-appcheck.php';
+require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-entry-store.php';
+require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-entries-list-table.php';
+require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-entries-page.php';
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-rest-api.php';
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay.php';
 

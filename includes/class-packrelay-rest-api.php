@@ -25,37 +25,37 @@ class PackRelay_REST_API {
 	const NAMESPACE = 'packrelay/v1';
 
 	/**
-	 * ReCaptcha instance.
+	 * App Check instance.
 	 *
-	 * @var PackRelay_ReCaptcha
+	 * @var PackRelay_AppCheck
 	 */
-	private $recaptcha;
+	private $appcheck;
 
 	/**
-	 * Entry instance.
+	 * Provider instance.
 	 *
-	 * @var PackRelay_Entry
+	 * @var PackRelay_Provider
 	 */
-	private $entry;
+	private $provider;
 
 	/**
-	 * Notification instance.
+	 * Entry store instance.
 	 *
-	 * @var PackRelay_Notification
+	 * @var PackRelay_Entry_Store
 	 */
-	private $notification;
+	private $entry_store;
 
 	/**
 	 * Constructor.
 	 *
-	 * @param PackRelay_ReCaptcha|null    $recaptcha    Optional reCAPTCHA instance.
-	 * @param PackRelay_Entry|null        $entry        Optional entry instance.
-	 * @param PackRelay_Notification|null $notification Optional notification instance.
+	 * @param PackRelay_AppCheck|null    $appcheck    Optional App Check instance.
+	 * @param PackRelay_Provider|null    $provider    Optional provider instance.
+	 * @param PackRelay_Entry_Store|null $entry_store Optional entry store instance.
 	 */
-	public function __construct( $recaptcha = null, $entry = null, $notification = null ) {
-		$this->recaptcha    = $recaptcha ?: new PackRelay_ReCaptcha();
-		$this->entry        = $entry ?: new PackRelay_Entry();
-		$this->notification = $notification ?: new PackRelay_Notification();
+	public function __construct( $appcheck = null, $provider = null, $entry_store = null ) {
+		$this->appcheck    = $appcheck ?: new PackRelay_AppCheck();
+		$this->provider    = $provider ?: PackRelay_Provider_Factory::create();
+		$this->entry_store = $entry_store ?: new PackRelay_Entry_Store();
 	}
 
 	/**
@@ -64,7 +64,7 @@ class PackRelay_REST_API {
 	public function register_routes() {
 		register_rest_route(
 			self::NAMESPACE,
-			'/submit/(?P<form_id>\d+)',
+			'/submit/(?P<form_id>[0-9:]+)',
 			array(
 				array(
 					'methods'             => 'POST',
@@ -74,9 +74,9 @@ class PackRelay_REST_API {
 						'form_id' => array(
 							'required'          => true,
 							'validate_callback' => function ( $param ) {
-								return is_numeric( $param );
+								return (bool) preg_match( '/^\d+(?::\d+)?$/', $param );
 							},
-							'sanitize_callback' => 'absint',
+							'sanitize_callback' => 'sanitize_text_field',
 						),
 					),
 				),
@@ -90,7 +90,7 @@ class PackRelay_REST_API {
 
 		register_rest_route(
 			self::NAMESPACE,
-			'/forms/(?P<form_id>\d+)/fields',
+			'/forms/(?P<form_id>[0-9:]+)/fields',
 			array(
 				array(
 					'methods'             => 'GET',
@@ -100,9 +100,9 @@ class PackRelay_REST_API {
 						'form_id' => array(
 							'required'          => true,
 							'validate_callback' => function ( $param ) {
-								return is_numeric( $param );
+								return (bool) preg_match( '/^\d+(?::\d+)?$/', $param );
 							},
-							'sanitize_callback' => 'absint',
+							'sanitize_callback' => 'sanitize_text_field',
 						),
 					),
 				),
@@ -129,21 +129,20 @@ class PackRelay_REST_API {
 			return $this->error_response( 'form_not_found', __( 'The specified form is not available.', 'packrelay' ), 404 );
 		}
 
-		// Verify the form exists in WPForms.
-		$form = $this->get_wpforms_form( $form_id );
+		// Verify the form exists via provider.
+		$form = $this->provider->get_form( $form_id );
 		if ( ! $form ) {
-			return $this->error_response( 'form_not_found', __( 'The specified WPForms form does not exist.', 'packrelay' ), 404 );
+			return $this->error_response( 'form_not_found', __( 'The specified form does not exist.', 'packrelay' ), 404 );
 		}
 
-		// Verify reCAPTCHA.
-		$token = $request->get_param( 'recaptcha_token' );
-		$ip    = $this->get_client_ip( $request );
+		// Verify App Check token.
+		$token = $request->get_param( 'app_check_token' );
 
-		$recaptcha_result = $this->recaptcha->verify( $token, $form_id, $ip );
-		if ( ! $recaptcha_result['success'] ) {
+		$appcheck_result = $this->appcheck->verify( $token, $form_id );
+		if ( ! $appcheck_result['success'] ) {
 			return $this->error_response(
-				$recaptcha_result['code'],
-				$recaptcha_result['message'],
+				$appcheck_result['code'],
+				$appcheck_result['message'],
 				403
 			);
 		}
@@ -155,7 +154,7 @@ class PackRelay_REST_API {
 		}
 
 		// Validate email fields.
-		$form_fields = $this->get_form_field_types( $form );
+		$form_fields = $this->provider->get_field_types( $form_id );
 		foreach ( $form_fields as $field_id => $field_type ) {
 			if ( 'email' === $field_type && isset( $fields[ $field_id ] ) && ! empty( $fields[ $field_id ] ) ) {
 				if ( ! is_email( $fields[ $field_id ] ) ) {
@@ -164,8 +163,8 @@ class PackRelay_REST_API {
 			}
 		}
 
-		// Create entry.
-		$entry_result = $this->entry->create( $form_id, $fields, $request );
+		// Create entry via provider.
+		$entry_result = $this->provider->create_entry( $form_id, $fields, $request );
 		if ( ! $entry_result['success'] ) {
 			return $this->error_response(
 				$entry_result['code'],
@@ -174,17 +173,42 @@ class PackRelay_REST_API {
 			);
 		}
 
-		$entry_id   = $entry_result['entry_id'];
-		$form_title = $form['settings']['form_title'] ?? '';
+		$entry_id = $entry_result['entry_id'];
 
-		// Send notification.
-		$this->notification->send( $entry_id, $form_id, $fields, $form_title );
+		// Log to unified entry store (for non-Divi providers that have their own storage).
+		if ( 'divi' !== $this->provider->get_slug() ) {
+			$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
+
+			$forwarded_for = $request->get_header( 'X-Forwarded-For' );
+			if ( ! empty( $forwarded_for ) ) {
+				$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
+				$candidate_ip = $ips[0];
+
+				if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
+					$ip = $candidate_ip;
+				}
+			}
+
+			$this->entry_store->add(
+				array(
+					'provider'     => $this->provider->get_slug(),
+					'form_id'      => $form_id,
+					'fields'       => wp_json_encode( $fields ),
+					'ip_address'   => $ip,
+					'user_agent'   => sanitize_text_field( $request->get_header( 'User-Agent' ) ?? '' ),
+					'date_created' => current_time( 'mysql' ),
+				)
+			);
+		}
+
+		// Send notifications via provider.
+		$this->provider->send_notifications( $form_id, $entry_id, $fields, $form );
 
 		/**
 		 * Fires after successful entry creation.
 		 *
 		 * @param int              $entry_id The entry ID.
-		 * @param int              $form_id  The form ID.
+		 * @param string           $form_id  The form ID.
 		 * @param array            $fields   The submitted fields.
 		 * @param \WP_REST_Request $request  The REST request.
 		 */
@@ -199,9 +223,9 @@ class PackRelay_REST_API {
 		/**
 		 * Filter the REST API response before returning.
 		 *
-		 * @param array $response The response data.
-		 * @param int   $entry_id The entry ID.
-		 * @param int   $form_id  The form ID.
+		 * @param array  $response The response data.
+		 * @param int    $entry_id The entry ID.
+		 * @param string $form_id  The form ID.
 		 */
 		$response = apply_filters( 'packrelay_rest_response', $response, $entry_id, $form_id );
 
@@ -221,31 +245,17 @@ class PackRelay_REST_API {
 			return $this->error_response( 'form_not_found', __( 'The specified form is not available.', 'packrelay' ), 404 );
 		}
 
-		$form = $this->get_wpforms_form( $form_id );
+		$form = $this->provider->get_form( $form_id );
 		if ( ! $form ) {
-			return $this->error_response( 'form_not_found', __( 'The specified WPForms form does not exist.', 'packrelay' ), 404 );
-		}
-
-		$form_title = $form['settings']['form_title'] ?? '';
-		$fields     = array();
-
-		if ( ! empty( $form['fields'] ) ) {
-			foreach ( $form['fields'] as $field ) {
-				$fields[] = array(
-					'id'       => (string) ( $field['id'] ?? '' ),
-					'type'     => $field['type'] ?? '',
-					'label'    => $field['label'] ?? '',
-					'required' => ! empty( $field['required'] ),
-				);
-			}
+			return $this->error_response( 'form_not_found', __( 'The specified form does not exist.', 'packrelay' ), 404 );
 		}
 
 		return new \WP_REST_Response(
 			array(
 				'success'    => true,
 				'form_id'    => $form_id,
-				'form_title' => $form_title,
-				'fields'     => $fields,
+				'form_title' => $form['title'] ?? '',
+				'fields'     => $form['fields'] ?? array(),
 			),
 			200
 		);
@@ -292,12 +302,12 @@ class PackRelay_REST_API {
 	/**
 	 * Check if a form ID is in the allowlist.
 	 *
-	 * @param int $form_id The form ID.
+	 * @param string $form_id The form ID.
 	 * @return bool
 	 */
 	private function is_form_allowed( $form_id ) {
 		$settings    = PackRelay_Settings::get_settings();
-		$allowed_ids = array_filter( array_map( 'absint', array_map( 'trim', explode( ',', $settings['allowed_form_ids'] ?? '' ) ) ) );
+		$allowed_ids = array_filter( array_map( 'trim', explode( ',', $settings['allowed_form_ids'] ?? '' ) ) );
 
 		/**
 		 * Filter allowed form IDs.
@@ -310,51 +320,7 @@ class PackRelay_REST_API {
 			return false;
 		}
 
-		return in_array( absint( $form_id ), $allowed_ids, true );
-	}
-
-	/**
-	 * Get a WPForms form by ID.
-	 *
-	 * @param int $form_id The form ID.
-	 * @return array|false The form data or false.
-	 */
-	private function get_wpforms_form( $form_id ) {
-		if ( ! function_exists( 'wpforms' ) ) {
-			return false;
-		}
-
-		$form = wpforms()->form->get( absint( $form_id ) );
-
-		if ( ! $form ) {
-			return false;
-		}
-
-		$form_data = wpforms_decode( $form->post_content );
-
-		if ( empty( $form_data ) ) {
-			return false;
-		}
-
-		return $form_data;
-	}
-
-	/**
-	 * Get field types from form data.
-	 *
-	 * @param array $form The decoded form data.
-	 * @return array Field ID => type mapping.
-	 */
-	private function get_form_field_types( $form ) {
-		$types = array();
-
-		if ( ! empty( $form['fields'] ) ) {
-			foreach ( $form['fields'] as $field ) {
-				$types[ (string) $field['id'] ] = $field['type'] ?? '';
-			}
-		}
-
-		return $types;
+		return in_array( (string) $form_id, $allowed_ids, true );
 	}
 
 	/**
@@ -371,32 +337,6 @@ class PackRelay_REST_API {
 		}
 
 		return array_filter( array_map( 'trim', explode( ',', $origins ) ) );
-	}
-
-	/**
-	 * Get the client IP address from the request.
-	 *
-	 * Uses REMOTE_ADDR as the primary source. Falls back to the first valid
-	 * IP from X-Forwarded-For only when the header is present.
-	 *
-	 * @param \WP_REST_Request $request The REST request.
-	 * @return string
-	 */
-	private function get_client_ip( $request ) {
-		$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
-
-		$forwarded_for = $request->get_header( 'X-Forwarded-For' );
-		if ( ! empty( $forwarded_for ) ) {
-			// X-Forwarded-For may contain a comma-separated list; take the first entry.
-			$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
-			$candidate_ip = $ips[0];
-
-			if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
-				$ip = $candidate_ip;
-			}
-		}
-
-		return $ip;
 	}
 
 	/**
