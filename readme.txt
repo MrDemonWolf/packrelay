@@ -1,6 +1,6 @@
 === PackRelay ===
 Contributors: mrdemonwolf
-Tags: wpforms, rest-api, forms, recaptcha, mobile
+Tags: wpforms, rest-api, forms, firebase, mobile
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
@@ -8,7 +8,7 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Accept WPForms submissions from external apps and mobile clients via REST API with Google reCAPTCHA v3 protection.
+Accept WPForms submissions from external apps and mobile clients via REST API with Firebase App Check protection.
 
 == Description ==
 
@@ -22,7 +22,7 @@ WPForms has no built-in REST API for accepting external submissions. PackRelay b
 
 * REST API endpoint for form submission (`POST /wp-json/packrelay/v1/submit/{form_id}`)
 * REST API endpoint for form field structure (`GET /wp-json/packrelay/v1/forms/{form_id}/fields`)
-* Google reCAPTCHA v3 server-side verification with configurable score threshold
+* Firebase App Check server-side verification for spam protection
 * Form ID allowlist for security
 * CORS support with configurable allowed origins
 * Email notifications via wp_mail() on successful submissions
@@ -32,8 +32,8 @@ WPForms has no built-in REST API for accepting external submissions. PackRelay b
 
 * WordPress 6.0+
 * WPForms Lite or Pro
-* PHP 8.0+
-* Google reCAPTCHA v3 site key + secret key
+* PHP 8.1+
+* Firebase project with App Check enabled
 
 == Installation ==
 
@@ -41,7 +41,7 @@ WPForms has no built-in REST API for accepting external submissions. PackRelay b
 2. Activate the plugin through the Plugins menu in WordPress
 3. Install and activate WPForms (Lite or Pro) if not already installed
 4. Go to Settings > PackRelay to configure:
-   - Google reCAPTCHA v3 keys
+   - Firebase project ID
    - Allowed form IDs
    - Notification email
    - Allowed CORS origins (if needed)
@@ -52,9 +52,12 @@ WPForms has no built-in REST API for accepting external submissions. PackRelay b
 
 No, PackRelay works with WPForms Lite (free) and Pro.
 
-= How do I get reCAPTCHA keys? =
+= How do I set up Firebase App Check? =
 
-Visit https://www.google.com/recaptcha/admin and create a reCAPTCHA v3 site.
+1. Create a Firebase project at https://console.firebase.google.com
+2. Enable App Check in the Firebase console
+3. Register your app with an attestation provider (App Attest for iOS, Play Integrity for Android)
+4. Enter your Firebase project ID in the PackRelay settings
 
 = Will entries trigger WPForms notifications? =
 
@@ -62,14 +65,14 @@ No. PackRelay creates entries via `wpforms()->entry->add()` which does not trigg
 
 = Is this secure without WordPress nonces? =
 
-Yes. Since this is a public API for external apps, WordPress nonces are not applicable. Google reCAPTCHA v3 serves as the anti-abuse mechanism, combined with form ID allowlisting and input sanitization.
+Yes. Since this is a public API for external apps, WordPress nonces are not applicable. Firebase App Check serves as the anti-abuse mechanism, combined with form ID allowlisting and input sanitization.
 
 == Changelog ==
 
 = 1.0.0 =
 * Initial release
 * REST API endpoints for form submission and field retrieval
-* Google reCAPTCHA v3 verification
+* Firebase App Check verification
 * Email notifications
 * CORS support
 * WordPress admin settings page

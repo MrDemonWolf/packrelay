@@ -5,102 +5,62 @@ This guide shows how to integrate PackRelay with a React Native app (Expo or bar
 ## Prerequisites
 
 - PackRelay installed and configured on your WordPress site
-- Google reCAPTCHA v3 site key (from your PackRelay settings)
+- Firebase project with App Check enabled
 - WPForms form ID and field IDs
 
-## 1. Install reCAPTCHA for React Native
+## 1. Install Firebase App Check for React Native
 
-For Expo projects:
-
-```bash
-npx expo install react-native-google-recaptcha-v3
-```
-
-For bare React Native:
+For bare React Native projects:
 
 ```bash
-npm install react-native-google-recaptcha-v3
+npm install @react-native-firebase/app @react-native-firebase/app-check
 ```
 
-Alternatively, use a WebView-based approach:
+For Expo projects (with config plugin):
 
 ```bash
-npm install react-native-webview
+npx expo install @react-native-firebase/app @react-native-firebase/app-check
 ```
 
-## 2. reCAPTCHA Token Generation
+Follow the [React Native Firebase setup guide](https://rnfirebase.io/) for platform-specific configuration (GoogleService-Info.plist for iOS, google-services.json for Android).
 
-### Option A: WebView-based reCAPTCHA (Recommended)
+## 2. App Check Token Generation
 
-Create a reusable reCAPTCHA component:
+### Initialize App Check
 
 ```tsx
-// components/ReCaptcha.tsx
-import React, { useRef, useCallback } from 'react';
-import { WebView } from 'react-native-webview';
+// app/firebaseSetup.ts
+import { firebase } from '@react-native-firebase/app-check';
 
-interface ReCaptchaProps {
-  siteKey: string;
-  onToken: (token: string) => void;
-  onError?: (error: string) => void;
-  action?: string;
-}
+export async function initAppCheck() {
+  const rnfbProvider = firebase.appCheck().newReactNativeFirebaseAppCheckProvider();
+  rnfbProvider.configure({
+    android: {
+      provider: __DEV__ ? 'debug' : 'playIntegrity',
+    },
+    apple: {
+      provider: __DEV__ ? 'debug' : 'appAttest',
+    },
+  });
 
-export function ReCaptcha({ siteKey, onToken, onError, action = 'submit' }: ReCaptchaProps) {
-  const webViewRef = useRef<WebView>(null);
-
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <script src="https://www.google.com/recaptcha/api.js?render=${siteKey}"></script>
-    </head>
-    <body>
-      <script>
-        grecaptcha.ready(function() {
-          grecaptcha.execute('${siteKey}', { action: '${action}' })
-            .then(function(token) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'token', token }));
-            })
-            .catch(function(err) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', error: err.message }));
-            });
-        });
-      </script>
-    </body>
-    </html>
-  `;
-
-  const onMessage = useCallback((event: any) => {
-    let data;
-    try {
-      data = JSON.parse(event.nativeEvent.data);
-    } catch {
-      onError?.('Failed to parse reCAPTCHA response');
-      return;
-    }
-    if (data.type === 'token') {
-      onToken(data.token);
-    } else if (data.type === 'error' && onError) {
-      onError(data.error);
-    }
-  }, [onToken, onError]);
-
-  return (
-    <WebView
-      ref={webViewRef}
-      source={{ html }}
-      style={{ height: 0, width: 0, opacity: 0 }}
-      onMessage={onMessage}
-      javaScriptEnabled
-    />
-  );
+  await firebase.appCheck().initializeAppCheck({
+    provider: rnfbProvider,
+    isTokenAutoRefreshEnabled: true,
+  });
 }
 ```
 
-### Option B: Using react-native-recaptcha-that-works
+### Get App Check Token
 
-If you prefer a native solution, [`react-native-recaptcha-that-works`](https://github.com/nicksenger/react-native-recaptcha-that-works) wraps the reCAPTCHA SDK for React Native.
+```tsx
+// hooks/useAppCheckToken.ts
+import { firebase } from '@react-native-firebase/app-check';
+
+export async function getAppCheckToken(): Promise<string> {
+  const { token } = await firebase.appCheck().getToken(true);
+  return token;
+}
+```
 
 ## 3. Fetching Form Fields
 
@@ -148,7 +108,7 @@ export interface SubmitResult {
 export async function submitForm(
   formId: number,
   fields: Record<string, string>,
-  recaptchaToken: string
+  appCheckToken: string
 ): Promise<SubmitResult> {
   const response = await fetch(`${API_BASE}/submit/${formId}`, {
     method: 'POST',
@@ -157,7 +117,7 @@ export async function submitForm(
     },
     body: JSON.stringify({
       fields,
-      recaptcha_token: recaptchaToken,
+      app_check_token: appCheckToken,
     }),
   });
 
@@ -187,10 +147,9 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from 'react-native';
-import { ReCaptcha } from '../components/ReCaptcha';
+import { getAppCheckToken } from '../hooks/useAppCheckToken';
 import { getFormFields, submitForm, FormField } from '../api/packrelay';
 
-const SITE_KEY = 'your-recaptcha-v3-site-key';
 const FORM_ID = 123; // Your WPForms form ID
 
 export function ContactForm() {
@@ -198,8 +157,6 @@ export function ContactForm() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [recaptchaToken, setRecaptchaToken] = useState<string | null>(null);
-  const [showRecaptcha, setShowRecaptcha] = useState(false);
 
   useEffect(() => {
     loadForm();
@@ -229,15 +186,10 @@ export function ContactForm() {
       }
     }
 
-    // Trigger reCAPTCHA
-    setShowRecaptcha(true);
-  }
-
-  async function onRecaptchaToken(token: string) {
-    setShowRecaptcha(false);
     setSubmitting(true);
 
     try {
+      const token = await getAppCheckToken();
       const result = await submitForm(FORM_ID, values, token);
       if (result.success) {
         Alert.alert('Success', result.message);
@@ -246,7 +198,7 @@ export function ContactForm() {
         Alert.alert('Error', result.message || 'Submission failed.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
+      Alert.alert('Error', 'Submission failed. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -292,17 +244,6 @@ export function ContactForm() {
           <Text style={styles.buttonText}>Submit</Text>
         )}
       </TouchableOpacity>
-
-      {showRecaptcha && (
-        <ReCaptcha
-          siteKey={SITE_KEY}
-          onToken={onRecaptchaToken}
-          onError={() => {
-            setShowRecaptcha(false);
-            Alert.alert('Error', 'reCAPTCHA verification failed.');
-          }}
-        />
-      )}
     </ScrollView>
   );
 }
@@ -342,8 +283,8 @@ PackRelay returns structured error responses:
 |--------|------|------------|
 | 400 | `missing_fields` | Check required fields are filled |
 | 400 | `invalid_email` | Validate email format before sending |
-| 403 | `recaptcha_failed` | Retry reCAPTCHA token generation |
-| 403 | `recaptcha_low_score` | User may be flagged as bot — retry or show captcha |
+| 403 | `appcheck_missing` | Ensure App Check token is included in the request |
+| 403 | `appcheck_failed` | Token is invalid or expired — refresh and retry |
 | 404 | `form_not_found` | Check form ID is correct and in the allowlist |
 | 500 | `entry_failed` | Server-side issue — show generic error |
 
@@ -359,8 +300,9 @@ For React Native apps making requests from native code (not a WebView), CORS hea
 
 ## 8. Security Best Practices
 
-- Never embed your reCAPTCHA **secret key** in the mobile app — only the **site key**
+- App Check tokens are automatically managed by the Firebase SDK — no secret keys in client code
 - Use HTTPS for all API calls
 - Validate input on the client side before sending
-- Handle token expiration — reCAPTCHA tokens are valid for ~2 minutes
+- App Check tokens are short-lived and auto-refreshed by the SDK
 - Consider adding request timeouts to prevent hanging requests
+- For development/testing, use the Firebase App Check debug provider

@@ -8,10 +8,12 @@ test:
 	vendor/bin/phpunit
 
 zip: clean
+	php composer.phar install --no-dev --optimize-autoloader --no-interaction
 	mkdir -p $(BUILD_DIR)/$(PLUGIN_NAME)
 	rsync -av --exclude-from=.distignore . $(BUILD_DIR)/$(PLUGIN_NAME)/
 	cd $(BUILD_DIR) && zip -r $(PLUGIN_NAME).zip $(PLUGIN_NAME)/
 	rm -rf $(BUILD_DIR)/$(PLUGIN_NAME)
+	php composer.phar install --no-interaction
 	@echo "Built: $(ZIP_FILE)"
 
 clean:
