@@ -59,6 +59,7 @@ require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-appcheck.php';
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-entry-store.php';
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-entries-list-table.php';
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-entries-page.php';
+require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-divi-submissions.php';
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay-rest-api.php';
 require_once PACKRELAY_PLUGIN_DIR . 'includes/class-packrelay.php';
 

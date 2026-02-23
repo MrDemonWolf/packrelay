@@ -53,13 +53,21 @@ class PackRelay {
 	protected $entries_page;
 
 	/**
+	 * Divi submissions instance.
+	 *
+	 * @var PackRelay_Divi_Submissions
+	 */
+	protected $divi_submissions;
+
+	/**
 	 * Constructor.
 	 */
 	private function __construct() {
-		$this->loader       = new PackRelay_Loader();
-		$this->settings     = new PackRelay_Settings();
-		$this->rest_api     = new PackRelay_REST_API();
-		$this->entries_page = new PackRelay_Entries_Page();
+		$this->loader           = new PackRelay_Loader();
+		$this->settings         = new PackRelay_Settings();
+		$this->rest_api         = new PackRelay_REST_API();
+		$this->entries_page     = new PackRelay_Entries_Page();
+		$this->divi_submissions = new PackRelay_Divi_Submissions();
 
 		$this->define_admin_hooks();
 		$this->define_public_hooks();
@@ -86,6 +94,12 @@ class PackRelay {
 		$this->loader->add_action( 'admin_menu', $this->settings, 'add_settings_page' );
 		$this->loader->add_action( 'admin_init', $this->settings, 'register_settings' );
 		$this->loader->add_action( 'admin_notices', $this, 'provider_dependency_notice' );
+
+		// Divi front-end submissions — conditional on Divi provider.
+		$this->loader->add_action( 'admin_menu', $this->divi_submissions, 'add_submenu_page' );
+		$this->loader->add_action( 'admin_enqueue_scripts', $this->divi_submissions, 'enqueue_styles' );
+		$this->loader->add_action( 'admin_init', $this->divi_submissions, 'handle_export' );
+		$this->loader->add_action( 'admin_init', $this->divi_submissions, 'handle_delete' );
 	}
 
 	/**
@@ -94,6 +108,9 @@ class PackRelay {
 	private function define_public_hooks() {
 		$this->loader->add_action( 'rest_api_init', $this->rest_api, 'register_routes' );
 		$this->loader->add_filter( 'rest_pre_serve_request', $this->rest_api, 'add_cors_headers', 10, 4 );
+
+		// Capture Divi front-end form submissions.
+		$this->loader->add_action( 'et_pb_contact_form_submit', $this->divi_submissions, 'save_submission', 10, 3 );
 	}
 
 	/**

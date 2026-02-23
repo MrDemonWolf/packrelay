@@ -48,6 +48,24 @@ class PackRelay_Entries_Page {
 			return;
 		}
 
+		if ( ! PackRelay_Activator::is_provider_available() ) {
+			$provider = PackRelay_Provider_Factory::create();
+			$label    = $provider->get_label();
+
+			echo '<div class="wrap">';
+			echo '<h1>' . esc_html__( 'PackRelay Entries', 'packrelay' ) . '</h1>';
+			echo '<div class="notice notice-warning"><p>';
+			printf(
+				/* translators: %s: form builder name */
+				esc_html__( 'PackRelay requires %s to be installed and active. Please install %s to use PackRelay.', 'packrelay' ),
+				esc_html( $label ),
+				esc_html( $label )
+			);
+			echo '</p></div>';
+			echo '</div>';
+			return;
+		}
+
 		$action = sanitize_text_field( $_GET['action'] ?? '' );
 
 		if ( 'view' === $action && ! empty( $_GET['entry_id'] ) ) {

@@ -216,5 +216,6 @@ require_once __DIR__ . '/../includes/class-packrelay-appcheck.php';
 require_once __DIR__ . '/../includes/class-packrelay-entry-store.php';
 require_once __DIR__ . '/../includes/class-packrelay-entries-list-table.php';
 require_once __DIR__ . '/../includes/class-packrelay-entries-page.php';
+require_once __DIR__ . '/../includes/class-packrelay-divi-submissions.php';
 require_once __DIR__ . '/../includes/class-packrelay-rest-api.php';
 require_once __DIR__ . '/../includes/class-packrelay.php';

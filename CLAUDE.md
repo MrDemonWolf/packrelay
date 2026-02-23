@@ -31,6 +31,7 @@ PackRelay is a WordPress plugin that adds REST API endpoints for external form s
 | `PackRelay_Entry_Store` | `class-packrelay-entry-store.php` | Custom `wp_packrelay_entries` table for unified entry storage |
 | `PackRelay_Entries_List_Table` | `class-packrelay-entries-list-table.php` | `WP_List_Table` subclass for admin entry list |
 | `PackRelay_Entries_Page` | `class-packrelay-entries-page.php` | Admin page controller for entry list + detail views |
+| `PackRelay_Divi_Submissions` | `class-packrelay-divi-submissions.php` | Divi front-end form submission capture + admin list/detail/export |
 | `PackRelay_Settings` | `class-packrelay-settings.php` | WordPress Settings API registration |
 | `PackRelay_Activator` | `class-packrelay-activator.php` | Activation: defaults, table creation, provider check |
 | `PackRelay_Deactivator` | `class-packrelay-deactivator.php` | Deactivation cleanup |
@@ -133,6 +134,7 @@ vendor/bin/phpunit --filter test_name                  # Run single test
 - `tests/ActivatorTest.php` — Activation defaults and table creation
 - `tests/CoreTest.php` — Singleton, hook registration
 - `tests/AppCheckTest.php` — Firebase App Check verification
+- `tests/DiviSubmissionsTest.php` — Divi front-end submission capture + admin page
 
 ## REST API Endpoints
 
@@ -161,3 +163,14 @@ Uses `yahnis-elsts/plugin-update-checker` to poll GitHub releases. When a newer 
 - `yahnis-elsts/plugin-update-checker` ^5.6 (GitHub release auto-updates)
 
 **Dev only:** PHPUnit, Brain Monkey, Mockery (via Composer)
+
+## CRITICAL DOCUMENTATION PATTERN
+
+**ALWAYS ADD IMPORTANT DOCS HERE!** When you create or discover:
+
+- Architecture diagrams → Add reference path here
+- Database schemas → Add reference path here
+- Problem solutions → Add reference path here
+- Setup guides → Add reference path here
+
+This prevents context loss! Update this file IMMEDIATELY when creating important docs.

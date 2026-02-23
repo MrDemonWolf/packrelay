@@ -122,6 +122,37 @@ abstract class TestCase extends PHPUnitTestCase {
 				'esc_js'              => function ( $text ) {
 					return $text;
 				},
+				'get_the_ID'          => function () {
+					return 0;
+				},
+				'get_the_title'       => function ( $post = 0 ) {
+					return 'Test Page';
+				},
+				'get_permalink'       => function ( $post = 0 ) {
+					return 'https://example.com/?p=' . $post;
+				},
+				'paginate_links'      => function () {
+					return '';
+				},
+				'date_i18n'           => function ( $format, $timestamp = false ) {
+					return gmdate( $format, $timestamp ? $timestamp : time() );
+				},
+				'number_format_i18n'  => function ( $number, $decimals = 0 ) {
+					return number_format( $number, $decimals );
+				},
+				'_n'                  => function ( $single, $plural, $number ) {
+					return ( 1 === $number ) ? $single : $plural;
+				},
+				'wp_redirect'         => function () {
+					return true;
+				},
+				'check_admin_referer' => function () {
+					return true;
+				},
+				'wp_unslash'          => function ( $value ) {
+					return is_string( $value ) ? stripslashes( $value ) : $value;
+				},
+				'wp_enqueue_style'    => function () {},
 				)
 		);
 	}
