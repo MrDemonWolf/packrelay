@@ -1,141 +1,265 @@
 /**
  * PackRelay Admin Styles
  *
+ * Blue theme (#0FACED / #091533) with Montserrat + Roboto fonts.
+ *
  * @package    PackRelay
  * @copyright  2026 MrDemonWolf, Inc.
  */
 
-/* Main wrapper */
-.packrelay-submissions-wrap {
-	max-width: 1200px;
+/* ==========================================================================
+   Variables & Base
+   ========================================================================== */
+
+.packrelay-wrap {
+	--pr-primary: #0FACED;
+	--pr-primary-hover: #0990d0;
+	--pr-dark: #091533;
+	--pr-light: #f0f8ff;
+	--pr-border: #d1e5f4;
+	--pr-text: #1e293b;
+	--pr-text-light: #64748b;
+	font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+	color: var(--pr-text);
 }
 
-/* Filter bar */
-.packrelay-submissions-actions {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin: 12px 0;
-	flex-wrap: wrap;
+.packrelay-wrap h1,
+.packrelay-wrap h2,
+.packrelay-wrap h3 {
+	font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+	font-weight: 700;
+	color: var(--pr-dark);
 }
 
-.packrelay-submissions-actions select {
-	max-width: 250px;
+.packrelay-wrap h1 {
+	font-size: 24px;
+	margin-bottom: 16px;
 }
 
-.packrelay-submissions-actions .button {
-	margin-left: auto;
+.packrelay-wrap h2 {
+	font-size: 18px;
+	margin-top: 24px;
+	margin-bottom: 12px;
 }
 
-/* Submissions table */
-.packrelay-submissions-table {
-	border-collapse: collapse;
-	width: 100%;
-}
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
 
-.packrelay-submissions-table th,
-.packrelay-submissions-table td {
-	padding: 8px 10px;
-	text-align: left;
-}
-
-.packrelay-submissions-table .column-id {
-	width: 60px;
-}
-
-.packrelay-submissions-table .column-contact {
-	width: 25%;
-}
-
-.packrelay-submissions-table .column-form {
-	width: 20%;
-}
-
-.packrelay-submissions-table .column-page {
-	width: 20%;
-}
-
-.packrelay-submissions-table .column-date {
-	width: 15%;
-}
-
-.packrelay-submissions-table .column-actions {
-	width: 10%;
-}
-
-.packrelay-submissions-table .contact-name {
+.packrelay-wrap .button-primary,
+.packrelay-wrap input[type="submit"].button-primary {
+	background: var(--pr-primary);
+	border-color: var(--pr-primary);
+	color: #fff;
+	font-family: 'Montserrat', sans-serif;
 	font-weight: 600;
+	text-shadow: none;
 }
 
-.packrelay-submissions-table .contact-email {
-	color: #666;
-	font-size: 12px;
+.packrelay-wrap .button-primary:hover,
+.packrelay-wrap .button-primary:focus,
+.packrelay-wrap input[type="submit"].button-primary:hover,
+.packrelay-wrap input[type="submit"].button-primary:focus {
+	background: var(--pr-primary-hover);
+	border-color: var(--pr-primary-hover);
+	color: #fff;
 }
 
-/* Detail page */
+.packrelay-wrap .button {
+	font-family: 'Roboto', sans-serif;
+	font-weight: 500;
+}
+
+.packrelay-wrap .page-title-action {
+	font-family: 'Montserrat', sans-serif;
+	font-weight: 600;
+	color: var(--pr-primary);
+	border-color: var(--pr-primary);
+}
+
+.packrelay-wrap .page-title-action:hover {
+	background: var(--pr-primary);
+	color: #fff;
+	border-color: var(--pr-primary);
+}
+
+/* ==========================================================================
+   List Table
+   ========================================================================== */
+
+.packrelay-wrap .wp-list-table thead th,
+.packrelay-wrap .wp-list-table tfoot th {
+	background: var(--pr-dark);
+	color: #fff;
+	font-family: 'Montserrat', sans-serif;
+	font-weight: 600;
+	font-size: 13px;
+	border-bottom: none;
+}
+
+.packrelay-wrap .wp-list-table thead th a,
+.packrelay-wrap .wp-list-table tfoot th a {
+	color: rgba(255, 255, 255, 0.85);
+}
+
+.packrelay-wrap .wp-list-table thead th a:hover,
+.packrelay-wrap .wp-list-table tfoot th a:hover {
+	color: #fff;
+}
+
+.packrelay-wrap .wp-list-table thead th .sorting-indicators .sorting-indicator,
+.packrelay-wrap .wp-list-table tfoot th .sorting-indicators .sorting-indicator {
+	border-color: rgba(255, 255, 255, 0.5) transparent;
+}
+
+.packrelay-wrap .wp-list-table thead th.sorted .sorting-indicators .sorting-indicator,
+.packrelay-wrap .wp-list-table tfoot th.sorted .sorting-indicators .sorting-indicator {
+	border-color: #fff transparent;
+}
+
+.packrelay-wrap .wp-list-table thead .check-column input,
+.packrelay-wrap .wp-list-table tfoot .check-column input {
+	accent-color: var(--pr-primary);
+}
+
+.packrelay-wrap .wp-list-table tbody tr:hover td {
+	background: var(--pr-light);
+}
+
+.packrelay-wrap .wp-list-table .row-actions a {
+	color: var(--pr-primary);
+}
+
+.packrelay-wrap .wp-list-table .row-actions .delete a {
+	color: #b32d2e;
+}
+
+/* ==========================================================================
+   Tablenav & Filters
+   ========================================================================== */
+
+.packrelay-wrap .tablenav .actions select {
+	border-color: var(--pr-border);
+	font-family: 'Roboto', sans-serif;
+}
+
+.packrelay-wrap .tablenav-pages a {
+	color: var(--pr-primary);
+	border-color: var(--pr-border);
+}
+
+.packrelay-wrap .tablenav-pages .current {
+	background: var(--pr-primary);
+	border-color: var(--pr-primary);
+	color: #fff;
+}
+
+/* ==========================================================================
+   Detail View
+   ========================================================================== */
+
 .packrelay-detail {
 	max-width: 800px;
 }
 
-.packrelay-detail h2 {
-	margin-top: 24px;
-	margin-bottom: 8px;
+.packrelay-detail table.widefat {
+	border: 1px solid var(--pr-border);
 }
 
-.packrelay-detail table {
-	margin-bottom: 16px;
-}
-
-.packrelay-detail th {
+.packrelay-detail table.widefat th {
 	width: 200px;
 	font-weight: 600;
+	font-family: 'Montserrat', sans-serif;
+	color: var(--pr-dark);
+	background: var(--pr-light);
 }
 
-.packrelay-detail .delete-link {
-	color: #b32d2e;
+.packrelay-detail table.widefat td {
+	font-family: 'Roboto', sans-serif;
 }
 
-.packrelay-detail .delete-link:hover {
-	color: #a00;
+/* ==========================================================================
+   Settings Page
+   ========================================================================== */
+
+.packrelay-wrap .form-table th {
+	font-family: 'Montserrat', sans-serif;
+	font-weight: 600;
+	color: var(--pr-dark);
 }
 
-/* Stats bar */
-.packrelay-stats {
-	color: #666;
-	margin: 8px 0 4px;
-	font-size: 13px;
+.packrelay-wrap .form-table input[type="text"],
+.packrelay-wrap .form-table input[type="email"],
+.packrelay-wrap .form-table select,
+.packrelay-wrap .form-table textarea {
+	border-color: var(--pr-border);
+	font-family: 'Roboto', sans-serif;
 }
 
-/* Pagination */
-.packrelay-pagination {
-	margin: 12px 0;
+.packrelay-wrap .form-table input[type="text"]:focus,
+.packrelay-wrap .form-table input[type="email"]:focus,
+.packrelay-wrap .form-table select:focus,
+.packrelay-wrap .form-table textarea:focus {
+	border-color: var(--pr-primary);
+	box-shadow: 0 0 0 1px var(--pr-primary);
 }
 
-.packrelay-pagination .tablenav-pages {
-	float: right;
+.packrelay-wrap .form-table select option:disabled {
+	color: #999;
+	font-style: italic;
 }
 
-/* Responsive */
+/* Placeholder variable buttons */
+.packrelay-placeholder-buttons {
+	margin-top: 8px;
+}
+
+.packrelay-placeholder-buttons .description {
+	margin-bottom: 6px;
+}
+
+.packrelay-placeholder-btn {
+	margin: 2px 4px 2px 0 !important;
+	font-size: 12px !important;
+	color: var(--pr-dark) !important;
+	border-color: var(--pr-border) !important;
+	background: var(--pr-light) !important;
+}
+
+.packrelay-placeholder-btn:hover {
+	background: var(--pr-primary) !important;
+	color: #fff !important;
+	border-color: var(--pr-primary) !important;
+}
+
+/* ==========================================================================
+   Settings Sections
+   ========================================================================== */
+
+.packrelay-wrap h2.title,
+.packrelay-wrap .settings-section-title {
+	border-bottom: 2px solid var(--pr-primary);
+	padding-bottom: 8px;
+}
+
+/* ==========================================================================
+   Notices
+   ========================================================================== */
+
+.packrelay-wrap .notice {
+	border-left-color: var(--pr-primary);
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
 @media screen and (max-width: 782px) {
-	.packrelay-submissions-actions {
-		flex-direction: column;
-		align-items: stretch;
-	}
-
-	.packrelay-submissions-actions select {
-		max-width: 100%;
-	}
-
-	.packrelay-submissions-actions .button {
-		margin-left: 0;
-	}
-
-	.packrelay-submissions-table .column-page,
-	.packrelay-submissions-table .column-date {
-		display: none;
-	}
-
 	.packrelay-detail th {
 		width: 120px;
+	}
+
+	.packrelay-placeholder-buttons {
+		margin-top: 12px;
 	}
 }

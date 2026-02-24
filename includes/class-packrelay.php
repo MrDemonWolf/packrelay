@@ -95,11 +95,11 @@ class PackRelay {
 		$this->loader->add_action( 'admin_init', $this->settings, 'register_settings' );
 		$this->loader->add_action( 'admin_notices', $this, 'provider_dependency_notice' );
 
-		// Divi front-end submissions — conditional on Divi provider.
-		$this->loader->add_action( 'admin_menu', $this->divi_submissions, 'add_submenu_page' );
-		$this->loader->add_action( 'admin_enqueue_scripts', $this->divi_submissions, 'enqueue_styles' );
-		$this->loader->add_action( 'admin_init', $this->divi_submissions, 'handle_export' );
-		$this->loader->add_action( 'admin_init', $this->divi_submissions, 'handle_delete' );
+		// Unified admin styles and scripts for all PackRelay pages.
+		$this->loader->add_action( 'admin_enqueue_scripts', $this->entries_page, 'enqueue_styles' );
+
+		// CSV export handler.
+		$this->loader->add_action( 'admin_init', $this->entries_page, 'handle_export' );
 	}
 
 	/**

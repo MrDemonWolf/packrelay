@@ -52,6 +52,7 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 		return array(
 			'cb'           => '<input type="checkbox" />',
 			'id'           => __( 'ID', 'packrelay' ),
+			'source'       => __( 'Source', 'packrelay' ),
 			'provider'     => __( 'Provider', 'packrelay' ),
 			'form_id'      => __( 'Form ID', 'packrelay' ),
 			'fields'       => __( 'Fields', 'packrelay' ),
@@ -131,6 +132,20 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 	}
 
 	/**
+	 * Source column — shows where the submission came from.
+	 *
+	 * @param array $item The entry data.
+	 * @return string
+	 */
+	public function column_source( $item ) {
+		if ( 'divi_frontend' === $item['provider'] ) {
+			return esc_html__( 'Divi Frontend', 'packrelay' );
+		}
+
+		return esc_html__( 'Mobile App', 'packrelay' );
+	}
+
+	/**
 	 * Provider column.
 	 *
 	 * @param array $item The entry data.
@@ -138,9 +153,10 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 	 */
 	public function column_provider( $item ) {
 		$labels = array(
-			'divi'         => 'Divi',
-			'wpforms'      => 'WPForms',
-			'gravityforms' => 'Gravity Forms',
+			'divi'           => 'Divi',
+			'divi_frontend'  => 'Divi',
+			'wpforms'        => 'WPForms',
+			'gravityforms'   => 'Gravity Forms',
 		);
 
 		return esc_html( $labels[ $item['provider'] ] ?? $item['provider'] );
@@ -197,7 +213,7 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 	}
 
 	/**
-	 * Extra table navigation (provider filter).
+	 * Extra table navigation (provider and source filters).
 	 *
 	 * @param string $which Top or bottom.
 	 */
@@ -207,6 +223,7 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 		}
 
 		$current_provider = sanitize_text_field( $_GET['provider_filter'] ?? '' );
+		$current_source   = sanitize_text_field( $_GET['source_filter'] ?? '' );
 		?>
 		<div class="alignleft actions">
 			<select name="provider_filter">
@@ -214,6 +231,11 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 				<option value="divi" <?php selected( $current_provider, 'divi' ); ?>>Divi</option>
 				<option value="wpforms" <?php selected( $current_provider, 'wpforms' ); ?>>WPForms</option>
 				<option value="gravityforms" <?php selected( $current_provider, 'gravityforms' ); ?>>Gravity Forms</option>
+			</select>
+			<select name="source_filter">
+				<option value=""><?php esc_html_e( 'All Sources', 'packrelay' ); ?></option>
+				<option value="mobile_app" <?php selected( $current_source, 'mobile_app' ); ?>><?php esc_html_e( 'Mobile App', 'packrelay' ); ?></option>
+				<option value="divi_frontend" <?php selected( $current_source, 'divi_frontend' ); ?>><?php esc_html_e( 'Divi Frontend', 'packrelay' ); ?></option>
 			</select>
 			<?php submit_button( __( 'Filter', 'packrelay' ), '', 'filter_action', false ); ?>
 		</div>
@@ -237,6 +259,15 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 
 		if ( ! empty( $_GET['provider_filter'] ) ) {
 			$args['provider'] = sanitize_text_field( $_GET['provider_filter'] );
+		}
+
+		if ( ! empty( $_GET['source_filter'] ) ) {
+			$source = sanitize_text_field( $_GET['source_filter'] );
+			if ( 'divi_frontend' === $source ) {
+				$args['provider'] = 'divi_frontend';
+			} elseif ( 'mobile_app' === $source ) {
+				$args['exclude_provider'] = 'divi_frontend';
+			}
 		}
 
 		if ( ! empty( $_GET['form_id_filter'] ) ) {

@@ -30,9 +30,9 @@ PackRelay is a WordPress plugin that adds REST API endpoints for external form s
 | `PackRelay_Provider_Factory` | `class-packrelay-provider-factory.php` | Creates provider instances based on settings |
 | `PackRelay_Entry_Store` | `class-packrelay-entry-store.php` | Custom `wp_packrelay_entries` table for unified entry storage |
 | `PackRelay_Entries_List_Table` | `class-packrelay-entries-list-table.php` | `WP_List_Table` subclass for admin entry list |
-| `PackRelay_Entries_Page` | `class-packrelay-entries-page.php` | Admin page controller for entry list + detail views |
-| `PackRelay_Divi_Submissions` | `class-packrelay-divi-submissions.php` | Divi front-end form submission capture + admin list/detail/export |
-| `PackRelay_Settings` | `class-packrelay-settings.php` | WordPress Settings API registration |
+| `PackRelay_Entries_Page` | `class-packrelay-entries-page.php` | Admin page controller for unified entry list + detail + CSV export |
+| `PackRelay_Divi_Submissions` | `class-packrelay-divi-submissions.php` | Divi front-end form submission capture + helper utilities |
+| `PackRelay_Settings` | `class-packrelay-settings.php` | WordPress Settings API registration + email template parsing |
 | `PackRelay_Activator` | `class-packrelay-activator.php` | Activation: defaults, table creation, provider check |
 | `PackRelay_Deactivator` | `class-packrelay-deactivator.php` | Deactivation cleanup |
 
@@ -97,6 +97,8 @@ All settings stored as a single option: `packrelay_settings`
 | `notification_email` | string | `''` (falls back to admin email) |
 | `allowed_form_ids` | string | `''` (comma-separated; Divi uses `post_id:form_index` format) |
 | `allowed_origins` | string | `''` (comma-separated) |
+| `notification_subject` | string | `'New {form_name} submission from {site_name}'` |
+| `notification_body` | string | (default template with `{all_fields}` and `{submission_date}`) |
 
 ## Hooks & Filters
 

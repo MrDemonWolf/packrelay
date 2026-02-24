@@ -41,6 +41,47 @@ class PackRelay_Entries_Page {
 	}
 
 	/**
+	 * Enqueue admin styles and scripts for PackRelay pages.
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 */
+	public function enqueue_styles( $hook_suffix ) {
+		if ( false === strpos( $hook_suffix, 'packrelay' ) ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'packrelay-google-fonts',
+			'https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Roboto:wght@400;500&display=swap',
+			array(),
+			null
+		);
+
+		wp_enqueue_style(
+			'packrelay-admin',
+			PACKRELAY_PLUGIN_URL . 'assets/css/packrelay-admin.css',
+			array( 'packrelay-google-fonts' ),
+			PACKRELAY_VERSION
+		);
+
+		wp_enqueue_script(
+			'packrelay-admin',
+			PACKRELAY_PLUGIN_URL . 'assets/js/packrelay-admin.js',
+			array( 'jquery' ),
+			PACKRELAY_VERSION,
+			true
+		);
+
+		wp_localize_script(
+			'packrelay-admin',
+			'packrelayAdmin',
+			array(
+				'adminEmail' => get_option( 'admin_email' ),
+			)
+		);
+	}
+
+	/**
 	 * Render the entries page.
 	 */
 	public function render_page() {
@@ -52,7 +93,7 @@ class PackRelay_Entries_Page {
 			$provider = PackRelay_Provider_Factory::create();
 			$label    = $provider->get_label();
 
-			echo '<div class="wrap">';
+			echo '<div class="wrap packrelay-wrap">';
 			echo '<h1>' . esc_html__( 'PackRelay Entries', 'packrelay' ) . '</h1>';
 			echo '<div class="notice notice-warning"><p>';
 			printf(
@@ -79,6 +120,99 @@ class PackRelay_Entries_Page {
 
 		$this->handle_bulk_actions();
 		$this->render_list_page();
+	}
+
+	/**
+	 * Handle CSV export.
+	 */
+	public function handle_export() {
+		if ( ! isset( $_GET['packrelay_export'] ) || '1' !== $_GET['packrelay_export'] ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		check_admin_referer( 'packrelay_export_csv' );
+
+		$provider_filter = sanitize_text_field( $_GET['provider_filter'] ?? '' );
+		$source_filter   = sanitize_text_field( $_GET['source_filter'] ?? '' );
+
+		$query_args = array(
+			'per_page' => 99999,
+			'offset'   => 0,
+		);
+
+		if ( $provider_filter ) {
+			$query_args['provider'] = $provider_filter;
+		}
+
+		if ( 'divi_frontend' === $source_filter ) {
+			$query_args['provider'] = 'divi_frontend';
+		} elseif ( 'mobile_app' === $source_filter ) {
+			$query_args['exclude_provider'] = 'divi_frontend';
+		}
+
+		$store   = new PackRelay_Entry_Store();
+		$entries = $store->get_entries( $query_args );
+
+		// Collect all unique field labels across entries.
+		$all_labels = array();
+		foreach ( $entries as $entry ) {
+			$fields = json_decode( $entry['fields'], true );
+			if ( is_array( $fields ) ) {
+				foreach ( array_keys( $fields ) as $label ) {
+					if ( ! in_array( $label, $all_labels, true ) ) {
+						$all_labels[] = $label;
+					}
+				}
+			}
+		}
+
+		$filename = 'packrelay-entries-' . gmdate( 'Y-m-d' ) . '.csv';
+
+		header( 'Content-Type: text/csv; charset=UTF-8' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Pragma: no-cache' );
+		header( 'Expires: 0' );
+
+		$output = fopen( 'php://output', 'w' );
+
+		// UTF-8 BOM for Excel compatibility.
+		fwrite( $output, "\xEF\xBB\xBF" );
+
+		// Header row.
+		$headers = array_merge(
+			array( 'ID', 'Source', 'Provider', 'Form ID', 'Form Name', 'Page', 'Date', 'IP Address' ),
+			$all_labels
+		);
+		fputcsv( $output, $headers );
+
+		// Data rows.
+		foreach ( $entries as $entry ) {
+			$fields = json_decode( $entry['fields'], true );
+			$source = ( 'divi_frontend' === $entry['provider'] ) ? 'Divi Frontend' : 'Mobile App';
+			$row    = array(
+				$entry['id'],
+				$source,
+				$entry['provider'],
+				$entry['form_id'],
+				$entry['form_name'],
+				$entry['page_title'],
+				$entry['date_created'],
+				$entry['ip_address'],
+			);
+
+			foreach ( $all_labels as $label ) {
+				$row[] = isset( $fields[ $label ] ) ? $fields[ $label ] : '';
+			}
+
+			fputcsv( $output, $row );
+		}
+
+		fclose( $output );
+		exit;
 	}
 
 	/**
@@ -136,8 +270,21 @@ class PackRelay_Entries_Page {
 		$list_table = new PackRelay_Entries_List_Table();
 		$list_table->prepare_items();
 
-		echo '<div class="wrap">';
+		$export_url = wp_nonce_url(
+			add_query_arg(
+				array(
+					'packrelay_export' => '1',
+					'provider_filter'  => sanitize_text_field( $_GET['provider_filter'] ?? '' ),
+					'source_filter'    => sanitize_text_field( $_GET['source_filter'] ?? '' ),
+				),
+				admin_url( 'admin.php' )
+			),
+			'packrelay_export_csv'
+		);
+
+		echo '<div class="wrap packrelay-wrap">';
 		echo '<h1>' . esc_html__( 'PackRelay Entries', 'packrelay' ) . '</h1>';
+		echo '<p><a href="' . esc_url( $export_url ) . '" class="button">' . esc_html__( 'Export CSV', 'packrelay' ) . '</a></p>';
 		echo '<form method="get">';
 		echo '<input type="hidden" name="page" value="packrelay-entries" />';
 		$list_table->display();
@@ -156,7 +303,7 @@ class PackRelay_Entries_Page {
 
 		$back_url = admin_url( 'admin.php?page=packrelay-entries' );
 
-		echo '<div class="wrap">';
+		echo '<div class="wrap packrelay-wrap">';
 		printf(
 			'<h1>%s <a href="%s" class="page-title-action">%s</a></h1>',
 			/* translators: %d: entry ID */
@@ -172,20 +319,40 @@ class PackRelay_Entries_Page {
 		}
 
 		$provider_labels = array(
-			'divi'         => 'Divi',
-			'wpforms'      => 'WPForms',
-			'gravityforms' => 'Gravity Forms',
+			'divi'           => 'Divi',
+			'divi_frontend'  => 'Divi',
+			'wpforms'        => 'WPForms',
+			'gravityforms'   => 'Gravity Forms',
 		);
 
+		$source = ( 'divi_frontend' === $entry['provider'] )
+			? __( 'Divi Frontend', 'packrelay' )
+			: __( 'Mobile App', 'packrelay' );
+
+		echo '<div class="packrelay-detail">';
 		echo '<table class="widefat striped">';
 		echo '<tbody>';
 
 		echo '<tr><th>' . esc_html__( 'ID', 'packrelay' ) . '</th><td>' . absint( $entry['id'] ) . '</td></tr>';
+		echo '<tr><th>' . esc_html__( 'Source', 'packrelay' ) . '</th><td>' . esc_html( $source ) . '</td></tr>';
 		echo '<tr><th>' . esc_html__( 'Provider', 'packrelay' ) . '</th><td>' . esc_html( $provider_labels[ $entry['provider'] ] ?? $entry['provider'] ) . '</td></tr>';
 		echo '<tr><th>' . esc_html__( 'Form ID', 'packrelay' ) . '</th><td>' . esc_html( $entry['form_id'] ) . '</td></tr>';
+
+		if ( ! empty( $entry['form_name'] ) ) {
+			echo '<tr><th>' . esc_html__( 'Form Name', 'packrelay' ) . '</th><td>' . esc_html( $entry['form_name'] ) . '</td></tr>';
+		}
+
+		if ( ! empty( $entry['page_title'] ) ) {
+			echo '<tr><th>' . esc_html__( 'Page', 'packrelay' ) . '</th><td>' . esc_html( $entry['page_title'] ) . '</td></tr>';
+		}
+
 		echo '<tr><th>' . esc_html__( 'IP Address', 'packrelay' ) . '</th><td>' . esc_html( $entry['ip_address'] ) . '</td></tr>';
 		echo '<tr><th>' . esc_html__( 'User Agent', 'packrelay' ) . '</th><td>' . esc_html( $entry['user_agent'] ) . '</td></tr>';
 		echo '<tr><th>' . esc_html__( 'Date', 'packrelay' ) . '</th><td>' . esc_html( $entry['date_created'] ) . '</td></tr>';
+
+		if ( ! empty( $entry['referer_url'] ) ) {
+			echo '<tr><th>' . esc_html__( 'Referer', 'packrelay' ) . '</th><td>' . esc_html( $entry['referer_url'] ) . '</td></tr>';
+		}
 
 		echo '</tbody>';
 		echo '</table>';
@@ -209,6 +376,7 @@ class PackRelay_Entries_Page {
 			echo '</table>';
 		}
 
+		echo '</div>';
 		echo '</div>';
 	}
 }

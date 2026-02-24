@@ -136,6 +136,11 @@ class PackRelay_Entry_Store {
 			$values[] = absint( $args['page_id'] );
 		}
 
+		if ( ! empty( $args['exclude_provider'] ) ) {
+			$where[]  = 'provider != %s';
+			$values[] = $args['exclude_provider'];
+		}
+
 		$where_sql = '';
 		if ( ! empty( $where ) ) {
 			$where_sql = 'WHERE ' . implode( ' AND ', $where );
@@ -223,6 +228,11 @@ class PackRelay_Entry_Store {
 		if ( ! empty( $args['page_id'] ) ) {
 			$where[]  = 'page_id = %d';
 			$values[] = absint( $args['page_id'] );
+		}
+
+		if ( ! empty( $args['exclude_provider'] ) ) {
+			$where[]  = 'provider != %s';
+			$values[] = $args['exclude_provider'];
 		}
 
 		$where_sql = '';

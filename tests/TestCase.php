@@ -88,6 +88,12 @@ abstract class TestCase extends PHPUnitTestCase {
 					}
 					return $atts;
 				},
+				'sanitize_textarea_field' => function ( $str ) {
+					return trim( strip_tags( (string) $str ) );
+				},
+				'get_bloginfo'        => function ( $show = '' ) {
+					return 'Test Site';
+				},
 				'selected'            => function ( $selected, $current = true, $echo = true ) {
 					$result = ( (string) $selected === (string) $current ) ? ' selected="selected"' : '';
 					if ( $echo ) {
