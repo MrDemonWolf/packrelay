@@ -12,14 +12,19 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	exit;
 }
 
+global $wpdb;
+
+// Drop the custom entries table.
+$table_name = $wpdb->prefix . 'packrelay_entries';
+$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" );
+
 // Delete plugin settings.
 delete_option( 'packrelay_settings' );
 
-// Delete any transients.
-delete_transient( 'packrelay_wpforms_notice' );
+// Delete any known transients.
+delete_transient( 'packrelay_provider_notice' );
 
-// Clean up any packrelay_ transients from the database.
-global $wpdb;
+// Clean up any remaining packrelay_ transients from the database.
 $wpdb->query(
 	$wpdb->prepare(
 		"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
