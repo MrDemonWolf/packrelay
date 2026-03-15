@@ -103,14 +103,7 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 	 * @return string
 	 */
 	public function column_id( $item ) {
-		$view_url   = add_query_arg(
-			array(
-				'page'     => 'packrelay-entries',
-				'action'   => 'view',
-				'entry_id' => $item['id'],
-			),
-			admin_url( 'admin.php' )
-		);
+		$view_url   = PackRelay_Entries_Page::get_view_url( $item['id'] );
 		$delete_url = wp_nonce_url(
 			add_query_arg(
 				array(

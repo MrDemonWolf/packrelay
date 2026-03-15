@@ -15,8 +15,7 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 global $wpdb;
 
 // Drop the custom entries table.
-$table_name = $wpdb->prefix . 'packrelay_entries';
-$wpdb->query( "DROP TABLE IF EXISTS {$table_name}" );
+$wpdb->query( sprintf( 'DROP TABLE IF EXISTS `%s`', esc_sql( $wpdb->prefix . 'packrelay_entries' ) ) );
 
 // Delete plugin settings.
 delete_option( 'packrelay_settings' );

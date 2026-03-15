@@ -32,6 +32,13 @@ class PackRelay_Settings {
 	const PAGE_SLUG = 'packrelay';
 
 	/**
+	 * Cached settings for the current request.
+	 *
+	 * @var array|null
+	 */
+	private static $settings_cache = null;
+
+	/**
 	 * Add the settings page as a submenu under PackRelay.
 	 */
 	public function add_settings_page() {
@@ -381,10 +388,21 @@ class PackRelay_Settings {
 	 * @return array
 	 */
 	public static function get_settings() {
-		return wp_parse_args(
-			get_option( self::OPTION_NAME, array() ),
-			self::get_defaults()
-		);
+		if ( null === self::$settings_cache ) {
+			self::$settings_cache = wp_parse_args(
+				get_option( self::OPTION_NAME, array() ),
+				self::get_defaults()
+			);
+		}
+
+		return self::$settings_cache;
+	}
+
+	/**
+	 * Clear the settings cache. Called after settings are saved.
+	 */
+	public static function clear_cache() {
+		self::$settings_cache = null;
 	}
 
 	/**

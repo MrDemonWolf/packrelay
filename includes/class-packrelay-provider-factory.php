@@ -29,6 +29,20 @@ class PackRelay_Provider_Factory {
 	);
 
 	/**
+	 * Cached available providers.
+	 *
+	 * @var array|null
+	 */
+	private static $available_cache = null;
+
+	/**
+	 * Clear the available providers cache.
+	 */
+	public static function clear_cache() {
+		self::$available_cache = null;
+	}
+
+	/**
 	 * Create a provider instance.
 	 *
 	 * @param string|null $slug Optional provider slug. Reads from settings if null.
@@ -54,15 +68,21 @@ class PackRelay_Provider_Factory {
 	 * @return array Slug => label mapping.
 	 */
 	public static function get_available_providers() {
+		if ( null !== self::$available_cache ) {
+			return self::$available_cache;
+		}
+
 		$available = array();
 
 		foreach ( self::$providers as $slug => $class ) {
-			$instance              = new $class();
+			$instance           = new $class();
 			$available[ $slug ] = array(
 				'label'     => $instance->get_label(),
 				'available' => $instance->is_available(),
 			);
 		}
+
+		self::$available_cache = $available;
 
 		return $available;
 	}

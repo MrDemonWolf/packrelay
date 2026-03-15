@@ -24,7 +24,37 @@ class PackRelay_Provider_Divi extends PackRelay_Provider {
 	 * @return bool
 	 */
 	public function is_available() {
-		return function_exists( 'et_setup_theme' ) || defined( 'ET_BUILDER_PLUGIN_VERSION' );
+		// Divi 4: theme or plugin.
+		if ( function_exists( 'et_setup_theme' ) || defined( 'ET_BUILDER_PLUGIN_VERSION' ) ) {
+			return true;
+		}
+
+		// Divi 5: check for builder-5 directory.
+		$theme_dir = get_template_directory();
+		if ( is_dir( $theme_dir . '/builder-5' ) ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if Divi 5 is running.
+	 *
+	 * @return bool
+	 */
+	private function is_divi5() {
+		$theme_dir = get_template_directory();
+		if ( is_dir( $theme_dir . '/builder-5' ) ) {
+			return true;
+		}
+
+		$divi_version = defined( 'ET_CORE_VERSION' ) ? ET_CORE_VERSION : '';
+		if ( ! empty( $divi_version ) && version_compare( $divi_version, '5.0', '>=' ) ) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -39,6 +69,12 @@ class PackRelay_Provider_Divi extends PackRelay_Provider {
 			return false;
 		}
 
+		// Divi 5 UUID-based form ID.
+		if ( $this->is_divi5() && ! empty( $parsed['form_uid'] ) ) {
+			return $this->get_form_divi5( $parsed['post_id'], $parsed['form_uid'] );
+		}
+
+		// Divi 4 shortcode-based form.
 		$post = get_post( $parsed['post_id'] );
 		if ( ! $post || empty( $post->post_content ) ) {
 			return false;
@@ -133,13 +169,18 @@ class PackRelay_Provider_Divi extends PackRelay_Provider {
 
 		$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
 
-		$forwarded_for = $request->get_header( 'X-Forwarded-For' );
-		if ( ! empty( $forwarded_for ) ) {
-			$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
-			$candidate_ip = $ips[0];
+		/** This filter is documented in includes/class-packrelay-rest-api.php */
+		$trusted_headers = apply_filters( 'packrelay_trusted_proxy_headers', array( 'X-Forwarded-For' ) );
 
-			if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
-				$ip = $candidate_ip;
+		if ( in_array( 'X-Forwarded-For', $trusted_headers, true ) ) {
+			$forwarded_for = $request->get_header( 'X-Forwarded-For' );
+			if ( ! empty( $forwarded_for ) ) {
+				$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
+				$candidate_ip = $ips[0];
+
+				if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
+					$ip = $candidate_ip;
+				}
 			}
 		}
 
@@ -269,13 +310,26 @@ class PackRelay_Provider_Divi extends PackRelay_Provider {
 	 * @return array|false Array with post_id and form_index, or false.
 	 */
 	private function parse_form_id( $form_id ) {
-		if ( ! preg_match( '/^(\d+)(?::(\d+))?$/', (string) $form_id, $matches ) ) {
+		$form_id = (string) $form_id;
+
+		// Divi 5 UUID format: post_id:uuid.
+		if ( preg_match( '/^(\d+):([a-f0-9-]{36})$/i', $form_id, $matches ) ) {
+			return array(
+				'post_id'    => (int) $matches[1],
+				'form_index' => 0,
+				'form_uid'   => $matches[2],
+			);
+		}
+
+		// Divi 4 format: post_id:form_index or just post_id.
+		if ( ! preg_match( '/^(\d+)(?::(\d+))?$/', $form_id, $matches ) ) {
 			return false;
 		}
 
 		return array(
 			'post_id'    => (int) $matches[1],
 			'form_index' => isset( $matches[2] ) ? (int) $matches[2] : 0,
+			'form_uid'   => '',
 		);
 	}
 
@@ -344,12 +398,105 @@ class PackRelay_Provider_Divi extends PackRelay_Provider {
 	 */
 	private function map_field_type( $divi_type ) {
 		$map = array(
-			'input' => 'text',
-			'text'  => 'textarea',
-			'email' => 'email',
-			'url'   => 'url',
+			'input'           => 'text',
+			'text'            => 'textarea',
+			'email'           => 'email',
+			'url'             => 'url',
+			'checkbox'        => 'checkbox',
+			'booleancheckbox' => 'checkbox',
+			'radio'           => 'radio',
+			'select'          => 'select',
+			'hidden'          => 'hidden',
 		);
 
 		return $map[ $divi_type ] ?? 'text';
+	}
+
+	/**
+	 * Get a Divi 5 form by parsing blocks.
+	 *
+	 * @param int    $post_id  The post ID.
+	 * @param string $form_uid The form unique ID.
+	 * @return array|false
+	 */
+	private function get_form_divi5( $post_id, $form_uid ) {
+		$post = get_post( $post_id );
+		if ( ! $post || empty( $post->post_content ) ) {
+			return false;
+		}
+
+		$blocks     = parse_blocks( $post->post_content );
+		$form_block = $this->find_contact_form_block( $blocks, $form_uid );
+
+		if ( ! $form_block ) {
+			return false;
+		}
+
+		$attrs = $form_block['attrs'] ?? array();
+		$title = $attrs['title'] ?? '';
+		$email = $attrs['email'] ?? '';
+
+		$fields = $this->parse_fields_divi5( $form_block );
+
+		return array(
+			'title'  => $title,
+			'email'  => $email,
+			'fields' => $fields,
+		);
+	}
+
+	/**
+	 * Recursively find a divi/contact-form block by unique ID.
+	 *
+	 * @param array  $blocks   Array of parsed blocks.
+	 * @param string $form_uid The form unique ID to find.
+	 * @return array|false The matching block or false.
+	 */
+	private function find_contact_form_block( $blocks, $form_uid ) {
+		foreach ( $blocks as $block ) {
+			if ( 'divi/contact-form' === ( $block['blockName'] ?? '' ) ) {
+				$block_uid = $block['attrs']['uniqueId'] ?? ( $block['attrs']['unique_id'] ?? '' );
+				if ( $block_uid === $form_uid ) {
+					return $block;
+				}
+			}
+
+			if ( ! empty( $block['innerBlocks'] ) ) {
+				$found = $this->find_contact_form_block( $block['innerBlocks'], $form_uid );
+				if ( $found ) {
+					return $found;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Parse fields from a Divi 5 contact form block's inner blocks.
+	 *
+	 * @param array $form_block The contact form block.
+	 * @return array
+	 */
+	private function parse_fields_divi5( $form_block ) {
+		$fields       = array();
+		$inner_blocks = $form_block['innerBlocks'] ?? array();
+
+		foreach ( $inner_blocks as $block ) {
+			if ( 'divi/contact-form-field' === ( $block['blockName'] ?? '' ) ) {
+				$attrs = $block['attrs'] ?? array();
+
+				$divi_type = $attrs['fieldType'] ?? ( $attrs['field_type'] ?? 'input' );
+				$type      = $this->map_field_type( $divi_type );
+
+				$fields[] = array(
+					'label'    => $attrs['fieldTitle'] ?? ( $attrs['field_title'] ?? '' ),
+					'type'     => $type,
+					'required' => 'off' !== ( $attrs['requiredMark'] ?? ( $attrs['required_mark'] ?? 'on' ) ),
+				);
+			}
+		}
+
+		return $fields;
 	}
 }

@@ -64,7 +64,7 @@ class PackRelay_REST_API {
 	public function register_routes() {
 		register_rest_route(
 			self::NAMESPACE,
-			'/submit/(?P<form_id>[0-9:]+)',
+			'/submit/(?P<form_id>[0-9a-fA-F:_-]+)',
 			array(
 				array(
 					'methods'             => 'POST',
@@ -74,7 +74,7 @@ class PackRelay_REST_API {
 						'form_id' => array(
 							'required'          => true,
 							'validate_callback' => function ( $param ) {
-								return (bool) preg_match( '/^\d+(?::\d+)?$/', $param );
+								return (bool) preg_match( '/^\d+(?::(?:\d+|[a-f0-9-]{36}))?$/i', $param );
 							},
 							'sanitize_callback' => 'sanitize_text_field',
 						),
@@ -90,7 +90,7 @@ class PackRelay_REST_API {
 
 		register_rest_route(
 			self::NAMESPACE,
-			'/forms/(?P<form_id>[0-9:]+)/fields',
+			'/forms/(?P<form_id>[0-9a-fA-F:_-]+)/fields',
 			array(
 				array(
 					'methods'             => 'GET',
@@ -100,7 +100,7 @@ class PackRelay_REST_API {
 						'form_id' => array(
 							'required'          => true,
 							'validate_callback' => function ( $param ) {
-								return (bool) preg_match( '/^\d+(?::\d+)?$/', $param );
+								return (bool) preg_match( '/^\d+(?::(?:\d+|[a-f0-9-]{36}))?$/i', $param );
 							},
 							'sanitize_callback' => 'sanitize_text_field',
 						),
@@ -179,13 +179,25 @@ class PackRelay_REST_API {
 		if ( 'divi' !== $this->provider->get_slug() ) {
 			$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
 
-			$forwarded_for = $request->get_header( 'X-Forwarded-For' );
-			if ( ! empty( $forwarded_for ) ) {
-				$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
-				$candidate_ip = $ips[0];
+			/**
+			 * Filter the trusted proxy headers used for IP detection.
+			 *
+			 * X-Forwarded-For is spoofable without a trusted proxy configuration.
+			 * Return an empty array to disable proxy header trust entirely.
+			 *
+			 * @param array $headers Trusted proxy headers.
+			 */
+			$trusted_headers = apply_filters( 'packrelay_trusted_proxy_headers', array( 'X-Forwarded-For' ) );
 
-				if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
-					$ip = $candidate_ip;
+			if ( in_array( 'X-Forwarded-For', $trusted_headers, true ) ) {
+				$forwarded_for = $request->get_header( 'X-Forwarded-For' );
+				if ( ! empty( $forwarded_for ) ) {
+					$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
+					$candidate_ip = $ips[0];
+
+					if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
+						$ip = $candidate_ip;
+					}
 				}
 			}
 
@@ -250,7 +262,7 @@ class PackRelay_REST_API {
 			return $this->error_response( 'form_not_found', __( 'The specified form does not exist.', 'packrelay' ), 404 );
 		}
 
-		return new \WP_REST_Response(
+		$response = new \WP_REST_Response(
 			array(
 				'success'    => true,
 				'form_id'    => $form_id,
@@ -259,6 +271,10 @@ class PackRelay_REST_API {
 			),
 			200
 		);
+
+		$response->header( 'Cache-Control', 'public, max-age=300' );
+
+		return $response;
 	}
 
 	/**
@@ -290,7 +306,11 @@ class PackRelay_REST_API {
 		$allowed_origins = $this->get_allowed_origins();
 
 		if ( ! empty( $allowed_origins ) && $origin && in_array( $origin, $allowed_origins, true ) ) {
-			header( 'Access-Control-Allow-Origin: ' . $origin );
+			$safe_origin = str_replace( array( "\r", "\n" ), '', $origin );
+			$safe_origin = esc_url( $safe_origin );
+			if ( ! empty( $safe_origin ) ) {
+				header( 'Access-Control-Allow-Origin: ' . $safe_origin );
+			}
 		}
 
 		header( 'Access-Control-Allow-Methods: POST, GET, OPTIONS' );

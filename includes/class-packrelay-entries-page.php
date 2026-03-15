@@ -41,6 +41,26 @@ class PackRelay_Entries_Page {
 	}
 
 	/**
+	 * Get a nonced URL for viewing an entry.
+	 *
+	 * @param int $entry_id The entry ID.
+	 * @return string
+	 */
+	public static function get_view_url( $entry_id ) {
+		return wp_nonce_url(
+			add_query_arg(
+				array(
+					'page'     => 'packrelay-entries',
+					'action'   => 'view',
+					'entry_id' => absint( $entry_id ),
+				),
+				admin_url( 'admin.php' )
+			),
+			'packrelay_view_entry_' . absint( $entry_id )
+		);
+	}
+
+	/**
 	 * Enqueue admin styles and scripts for PackRelay pages.
 	 *
 	 * @param string $hook_suffix The current admin page hook suffix.
@@ -110,6 +130,9 @@ class PackRelay_Entries_Page {
 		$action = sanitize_text_field( $_GET['action'] ?? '' );
 
 		if ( 'view' === $action && ! empty( $_GET['entry_id'] ) ) {
+			if ( ! wp_verify_nonce( $_GET['_wpnonce'] ?? '', 'packrelay_view_entry_' . absint( $_GET['entry_id'] ) ) ) {
+				wp_die( esc_html__( 'Security check failed.', 'packrelay' ) );
+			}
 			$this->render_detail_page( absint( $_GET['entry_id'] ) );
 			return;
 		}
@@ -139,36 +162,43 @@ class PackRelay_Entries_Page {
 		$provider_filter = sanitize_text_field( $_GET['provider_filter'] ?? '' );
 		$source_filter   = sanitize_text_field( $_GET['source_filter'] ?? '' );
 
-		$query_args = array(
-			'per_page' => 99999,
-			'offset'   => 0,
-		);
+		$base_args = array();
 
 		if ( $provider_filter ) {
-			$query_args['provider'] = $provider_filter;
+			$base_args['provider'] = $provider_filter;
 		}
 
 		if ( 'divi_frontend' === $source_filter ) {
-			$query_args['provider'] = 'divi_frontend';
+			$base_args['provider'] = 'divi_frontend';
 		} elseif ( 'mobile_app' === $source_filter ) {
-			$query_args['exclude_provider'] = 'divi_frontend';
+			$base_args['exclude_provider'] = 'divi_frontend';
 		}
 
-		$store   = new PackRelay_Entry_Store();
-		$entries = $store->get_entries( $query_args );
+		$store      = new PackRelay_Entry_Store();
+		$chunk_size = 500;
+		$offset     = 0;
 
-		// Collect all unique field labels across entries.
+		// First pass: collect all unique field labels.
 		$all_labels = array();
-		foreach ( $entries as $entry ) {
-			$fields = json_decode( $entry['fields'], true );
-			if ( is_array( $fields ) ) {
-				foreach ( array_keys( $fields ) as $label ) {
-					if ( ! in_array( $label, $all_labels, true ) ) {
-						$all_labels[] = $label;
+		do {
+			$chunk = $store->get_entries( array_merge( $base_args, array(
+				'per_page' => $chunk_size,
+				'offset'   => $offset,
+			) ) );
+
+			foreach ( $chunk as $entry ) {
+				$fields = json_decode( $entry['fields'], true );
+				if ( is_array( $fields ) ) {
+					foreach ( array_keys( $fields ) as $label ) {
+						if ( ! in_array( $label, $all_labels, true ) ) {
+							$all_labels[] = $label;
+						}
 					}
 				}
 			}
-		}
+
+			$offset += $chunk_size;
+		} while ( count( $chunk ) === $chunk_size );
 
 		$filename = 'packrelay-entries-' . gmdate( 'Y-m-d' ) . '.csv';
 
@@ -189,27 +219,41 @@ class PackRelay_Entries_Page {
 		);
 		fputcsv( $output, $headers );
 
-		// Data rows.
-		foreach ( $entries as $entry ) {
-			$fields = json_decode( $entry['fields'], true );
-			$source = ( 'divi_frontend' === $entry['provider'] ) ? 'Divi Frontend' : 'Mobile App';
-			$row    = array(
-				$entry['id'],
-				$source,
-				$entry['provider'],
-				$entry['form_id'],
-				$entry['form_name'],
-				$entry['page_title'],
-				$entry['date_created'],
-				$entry['ip_address'],
-			);
+		// Second pass: stream data rows in chunks.
+		$offset = 0;
+		do {
+			$chunk = $store->get_entries( array_merge( $base_args, array(
+				'per_page' => $chunk_size,
+				'offset'   => $offset,
+			) ) );
 
-			foreach ( $all_labels as $label ) {
-				$row[] = isset( $fields[ $label ] ) ? $fields[ $label ] : '';
+			foreach ( $chunk as $entry ) {
+				$fields = json_decode( $entry['fields'], true );
+				$source = ( 'divi_frontend' === $entry['provider'] ) ? 'Divi Frontend' : 'Mobile App';
+				$row    = array(
+					$entry['id'],
+					$source,
+					$entry['provider'],
+					$entry['form_id'],
+					$entry['form_name'],
+					$entry['page_title'],
+					$entry['date_created'],
+					$entry['ip_address'],
+				);
+
+				foreach ( $all_labels as $label ) {
+					$row[] = isset( $fields[ $label ] ) ? $fields[ $label ] : '';
+				}
+
+				fputcsv( $output, $row );
 			}
 
-			fputcsv( $output, $row );
-		}
+			if ( 0 === $offset % 2000 ) {
+				flush();
+			}
+
+			$offset += $chunk_size;
+		} while ( count( $chunk ) === $chunk_size );
 
 		fclose( $output );
 		exit;

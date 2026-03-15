@@ -66,6 +66,10 @@ if ( ! class_exists( 'WP_REST_Response' ) ) {
 		public function set_headers( $headers ) {
 			$this->headers = array_merge( $this->headers, $headers );
 		}
+
+		public function header( $key, $value, $replace = true ) {
+			$this->headers[ $key ] = $value;
+		}
 	}
 }
 

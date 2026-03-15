@@ -62,6 +62,15 @@ class PackRelay_Divi_Submissions {
 		}
 
 		$form_id    = isset( $contact_form_info['contact_form_unique_id'] ) ? sanitize_text_field( $contact_form_info['contact_form_unique_id'] ) : '';
+
+		// Divi 5 passes UUID in contact_form_id as "et_pb_contact_form_{uuid}".
+		if ( empty( $form_id ) && isset( $contact_form_info['contact_form_id'] ) ) {
+			$raw_id = $contact_form_info['contact_form_id'];
+			if ( preg_match( '/^et_pb_contact_form_([a-f0-9-]{36})$/i', $raw_id, $id_matches ) ) {
+				$form_id = sanitize_text_field( $id_matches[1] );
+			}
+		}
+
 		$form_number = isset( $contact_form_info['contact_form_number'] ) ? absint( $contact_form_info['contact_form_number'] ) : 0;
 		$form_title = isset( $contact_form_info['title'] ) ? sanitize_text_field( $contact_form_info['title'] ) : '';
 

@@ -51,7 +51,9 @@ class PackRelay_Entry_Store {
 			PRIMARY KEY  (id),
 			KEY provider (provider),
 			KEY form_id (form_id),
-			KEY date_created (date_created)
+			KEY date_created (date_created),
+			KEY provider_form_id (provider, form_id),
+			KEY provider_date_created (provider, date_created)
 		) $charset_collate;";
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';

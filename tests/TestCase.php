@@ -27,6 +27,10 @@ abstract class TestCase extends PHPUnitTestCase {
 		parent::setUp();
 		Monkey\setUp();
 
+		// Clear static caches to avoid stale data across tests.
+		\PackRelay_Settings::clear_cache();
+		\PackRelay_Provider_Factory::clear_cache();
+
 		// Common WordPress function stubs.
 		Functions\stubs(
 			array(
@@ -159,6 +163,9 @@ abstract class TestCase extends PHPUnitTestCase {
 					return is_string( $value ) ? stripslashes( $value ) : $value;
 				},
 				'wp_enqueue_style'    => function () {},
+				'get_template_directory' => function () {
+					return '/tmp/fake-theme';
+				},
 				)
 		);
 	}
@@ -167,6 +174,8 @@ abstract class TestCase extends PHPUnitTestCase {
 	 * Tear down Brain Monkey.
 	 */
 	protected function tearDown(): void {
+		\PackRelay_Settings::clear_cache();
+		\PackRelay_Provider_Factory::clear_cache();
 		Monkey\tearDown();
 		parent::tearDown();
 	}
