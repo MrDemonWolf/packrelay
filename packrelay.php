@@ -11,7 +11,7 @@
  * Plugin Name: PackRelay
  * Plugin URI:  https://github.com/mrdemonwolf/packrelay
  * Description: Accept form submissions from external apps and mobile clients via REST API with Firebase App Check protection. Supports Divi, WPForms, and Gravity Forms.
- * Version:     1.1.0-beta.1
+ * Version:     1.1.0
  * Author:      MrDemonWolf, Inc.
  * Author URI:  https://mrdemonwolf.com
  * License:     GPL-2.0-or-later
@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'PACKRELAY_VERSION', '1.1.0-beta.1' );
+define( 'PACKRELAY_VERSION', '1.1.0' );
 define( 'PACKRELAY_PLUGIN_FILE', __FILE__ );
 define( 'PACKRELAY_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'PACKRELAY_PLUGIN_URL', plugin_dir_url( __FILE__ ) );

@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1.0-beta.1] - 2026-03-14
+## [1.1.0] - 2026-03-14
 
 ### Security
 - Fix CORS header injection: sanitize Origin with CRLF stripping and esc_url()
