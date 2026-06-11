@@ -167,30 +167,16 @@ class PackRelay_Provider_Divi extends PackRelay_Provider {
 			$sanitized_fields[ sanitize_text_field( $field_id ) ] = sanitize_text_field( $value );
 		}
 
-		$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
-
-		/** This filter is documented in includes/class-packrelay-rest-api.php */
-		$trusted_headers = apply_filters( 'packrelay_trusted_proxy_headers', array( 'X-Forwarded-For' ) );
-
-		if ( in_array( 'X-Forwarded-For', $trusted_headers, true ) ) {
-			$forwarded_for = $request->get_header( 'X-Forwarded-For' );
-			if ( ! empty( $forwarded_for ) ) {
-				$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
-				$candidate_ip = $ips[0];
-
-				if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
-					$ip = $candidate_ip;
-				}
-			}
-		}
+		$form = $this->get_form( $form_id );
 
 		$store    = new PackRelay_Entry_Store();
 		$entry_id = $store->add(
 			array(
 				'provider'     => $this->get_slug(),
 				'form_id'      => $form_id,
+				'form_name'    => is_array( $form ) ? ( $form['title'] ?? '' ) : '',
 				'fields'       => wp_json_encode( $sanitized_fields ),
-				'ip_address'   => $ip,
+				'ip_address'   => $this->get_client_ip( $request ),
 				'user_agent'   => sanitize_text_field( $request->get_header( 'User-Agent' ) ?? '' ),
 				'date_created' => current_time( 'mysql' ),
 			)
@@ -240,24 +226,21 @@ class PackRelay_Provider_Divi extends PackRelay_Provider {
 			$form_title = sprintf( __( 'Form %s', 'packrelay' ), $form_id );
 		}
 
-		/* translators: %s: form title */
-		$subject = sprintf( __( '[PackRelay] New submission: %s', 'packrelay' ), $form_title );
+		$settings = PackRelay_Settings::get_settings();
+		$defaults = PackRelay_Settings::get_defaults();
 
-		$body = '<h2>' . esc_html( $form_title ) . '</h2>';
-		$body .= '<table style="border-collapse: collapse; width: 100%;">';
+		$subject_template = ! empty( $settings['notification_subject'] ) ? $settings['notification_subject'] : $defaults['notification_subject'];
+		$body_template    = ! empty( $settings['notification_body'] ) ? $settings['notification_body'] : $defaults['notification_body'];
 
-		foreach ( $fields as $field_id => $value ) {
-			$body .= '<tr>';
-			$body .= '<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold;">';
-			$body .= esc_html( $field_id );
-			$body .= '</td>';
-			$body .= '<td style="padding: 8px; border: 1px solid #ddd;">';
-			$body .= esc_html( $value );
-			$body .= '</td>';
-			$body .= '</tr>';
-		}
+		$template_data = array(
+			'form_name' => $form_title,
+			'form_id'   => $form_id,
+			'entry_id'  => $entry_id,
+			'fields'    => $fields,
+		);
 
-		$body .= '</table>';
+		$subject = PackRelay_Settings::parse_template( $subject_template, $template_data );
+		$body    = nl2br( esc_html( PackRelay_Settings::parse_template( $body_template, $template_data ) ) );
 
 		$headers = array( 'Content-Type: text/html; charset=UTF-8' );
 

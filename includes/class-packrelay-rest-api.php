@@ -153,6 +153,13 @@ class PackRelay_REST_API {
 			return $this->error_response( 'missing_fields', __( 'Required fields are missing from the request.', 'packrelay' ), 400 );
 		}
 
+		// Reject non-scalar field values (nested arrays/objects).
+		foreach ( $fields as $value ) {
+			if ( null !== $value && ! is_scalar( $value ) ) {
+				return $this->error_response( 'invalid_fields', __( 'Field values must be scalar.', 'packrelay' ), 400 );
+			}
+		}
+
 		// Validate email fields.
 		$form_fields = $this->provider->get_field_types( $form_id );
 		foreach ( $form_fields as $field_id => $field_type ) {
@@ -169,7 +176,7 @@ class PackRelay_REST_API {
 			return $this->error_response(
 				$entry_result['code'],
 				$entry_result['message'],
-				500
+				$entry_result['status'] ?? 500
 			);
 		}
 
@@ -177,36 +184,13 @@ class PackRelay_REST_API {
 
 		// Log to unified entry store (for non-Divi providers that have their own storage).
 		if ( 'divi' !== $this->provider->get_slug() ) {
-			$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
-
-			/**
-			 * Filter the trusted proxy headers used for IP detection.
-			 *
-			 * X-Forwarded-For is spoofable without a trusted proxy configuration.
-			 * Return an empty array to disable proxy header trust entirely.
-			 *
-			 * @param array $headers Trusted proxy headers.
-			 */
-			$trusted_headers = apply_filters( 'packrelay_trusted_proxy_headers', array( 'X-Forwarded-For' ) );
-
-			if ( in_array( 'X-Forwarded-For', $trusted_headers, true ) ) {
-				$forwarded_for = $request->get_header( 'X-Forwarded-For' );
-				if ( ! empty( $forwarded_for ) ) {
-					$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
-					$candidate_ip = $ips[0];
-
-					if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
-						$ip = $candidate_ip;
-					}
-				}
-			}
-
 			$this->entry_store->add(
 				array(
 					'provider'     => $this->provider->get_slug(),
 					'form_id'      => $form_id,
+					'form_name'    => $form['title'] ?? '',
 					'fields'       => wp_json_encode( $fields ),
-					'ip_address'   => $ip,
+					'ip_address'   => $this->provider->get_client_ip( $request ),
 					'user_agent'   => sanitize_text_field( $request->get_header( 'User-Agent' ) ?? '' ),
 					'date_created' => current_time( 'mysql' ),
 				)
@@ -267,12 +251,13 @@ class PackRelay_REST_API {
 				'success'    => true,
 				'form_id'    => $form_id,
 				'form_title' => $form['title'] ?? '',
-				'fields'     => $form['fields'] ?? array(),
+				'fields'     => $this->provider->get_fields( $form_id ),
 			),
 			200
 		);
 
 		$response->header( 'Cache-Control', 'public, max-age=300' );
+		$response->header( 'Vary', 'Origin' );
 
 		return $response;
 	}
@@ -306,10 +291,13 @@ class PackRelay_REST_API {
 		$allowed_origins = $this->get_allowed_origins();
 
 		if ( ! empty( $allowed_origins ) && $origin && in_array( $origin, $allowed_origins, true ) ) {
+			// The origin strictly matched an admin-configured allowlist entry.
+			// esc_url() is intentionally not used: it strips app schemes like
+			// capacitor:// and ionic:// that mobile WebView clients send.
 			$safe_origin = str_replace( array( "\r", "\n" ), '', $origin );
-			$safe_origin = esc_url( $safe_origin );
 			if ( ! empty( $safe_origin ) ) {
 				header( 'Access-Control-Allow-Origin: ' . $safe_origin );
+				header( 'Vary: Origin', false );
 			}
 		}
 

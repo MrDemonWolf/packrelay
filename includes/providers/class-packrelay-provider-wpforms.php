@@ -33,7 +33,7 @@ class PackRelay_Provider_WPForms extends PackRelay_Provider {
 	 * @return array|false
 	 */
 	public function get_form( $form_id ) {
-		if ( ! function_exists( 'wpforms' ) ) {
+		if ( ! function_exists( 'wpforms' ) || empty( wpforms()->form ) ) {
 			return false;
 		}
 
@@ -129,28 +129,27 @@ class PackRelay_Provider_WPForms extends PackRelay_Provider {
 		 */
 		$fields = apply_filters( 'packrelay_pre_save_fields', $fields, $form_id, $request );
 
+		// Build WPForms' native fields structure so entries render correctly
+		// in the WPForms admin (it reads $field['value'] per field).
+		$form          = $this->get_form( $form_id );
+		$wpf_form_data = is_array( $form ) ? ( $form['form_data'] ?? array() ) : array();
+
 		$sanitized_fields = array();
 		foreach ( $fields as $field_id => $value ) {
-			$sanitized_fields[ absint( $field_id ) ] = sanitize_text_field( $value );
-		}
-
-		$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
-
-		$forwarded_for = $request->get_header( 'X-Forwarded-For' );
-		if ( ! empty( $forwarded_for ) ) {
-			$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
-			$candidate_ip = $ips[0];
-
-			if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
-				$ip = $candidate_ip;
-			}
+			$field_id                      = absint( $field_id );
+			$sanitized_fields[ $field_id ] = array(
+				'id'    => $field_id,
+				'value' => sanitize_text_field( $value ),
+				'name'  => $wpf_form_data['fields'][ $field_id ]['label'] ?? '',
+				'type'  => $wpf_form_data['fields'][ $field_id ]['type'] ?? '',
+			);
 		}
 
 		$entry_data = array(
 			'form_id'    => absint( $form_id ),
 			'fields'     => wp_json_encode( $sanitized_fields ),
 			'date'       => current_time( 'mysql' ),
-			'ip_address' => $ip,
+			'ip_address' => $this->get_client_ip( $request ),
 			'user_agent' => sanitize_text_field( $request->get_header( 'User-Agent' ) ?? '' ),
 		);
 
@@ -205,13 +204,9 @@ class PackRelay_Provider_WPForms extends PackRelay_Provider {
 		// Force synchronous email delivery.
 		add_filter( 'wpforms_tasks_entry_emails_trigger_send_same_process', '__return_true' );
 
-		// Build entry object.
-		$entry = (object) array(
-			'entry_id' => $entry_id,
-			'fields'   => $wpf_fields,
-		);
-
-		wpforms()->process->entry_email( $wpf_fields, $entry, $wpf_form_data );
+		// WPForms passes the raw submission array as $entry; pass $entry_id
+		// explicitly so {entry_id} smart tags and entry links resolve.
+		wpforms()->process->entry_email( $wpf_fields, array( 'fields' => $fields ), $wpf_form_data, $entry_id, 'entry' );
 	}
 
 	/**

@@ -81,4 +81,41 @@ abstract class PackRelay_Provider {
 	 * @return string
 	 */
 	abstract public function get_slug();
+
+	/**
+	 * Resolve the client IP address for a REST request.
+	 *
+	 * Falls back to REMOTE_ADDR; proxy headers are only consulted when
+	 * allowed by the packrelay_trusted_proxy_headers filter.
+	 *
+	 * @param \WP_REST_Request $request The REST request.
+	 * @return string
+	 */
+	public function get_client_ip( $request ) {
+		$ip = sanitize_text_field( $_SERVER['REMOTE_ADDR'] ?? '' );
+
+		/**
+		 * Filter the trusted proxy headers used for IP detection.
+		 *
+		 * X-Forwarded-For is spoofable without a trusted proxy configuration.
+		 * Return an empty array to disable proxy header trust entirely.
+		 *
+		 * @param array $headers Trusted proxy headers.
+		 */
+		$trusted_headers = apply_filters( 'packrelay_trusted_proxy_headers', array( 'X-Forwarded-For' ) );
+
+		if ( in_array( 'X-Forwarded-For', $trusted_headers, true ) ) {
+			$forwarded_for = $request->get_header( 'X-Forwarded-For' );
+			if ( ! empty( $forwarded_for ) ) {
+				$ips          = array_map( 'trim', explode( ',', $forwarded_for ) );
+				$candidate_ip = $ips[0];
+
+				if ( filter_var( $candidate_ip, FILTER_VALIDATE_IP ) ) {
+					$ip = $candidate_ip;
+				}
+			}
+		}
+
+		return $ip;
+	}
 }

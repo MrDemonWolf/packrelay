@@ -166,6 +166,11 @@ Uses `yahnis-elsts/plugin-update-checker` to poll GitHub releases. When a newer 
 
 **Dev only:** PHPUnit, Brain Monkey, Mockery (via Composer)
 
+## Audit History
+
+- `AUDIT-REPORT-2026-06-10.md` — full security + code audit. All 4 Criticals (CSV injection, broken bulk delete, dead email templates, CORS scheme stripping) and most Warnings fixed 2026-06-11. Remaining follow-ups: JWKS transient cache for App Check (W11), readme "Tested up to" bump (I11).
+- Schema upgrades: `packrelay_db_version` option is compared against `PACKRELAY_VERSION` on `init` (`PackRelay_Activator::maybe_upgrade`) so PUC-delivered updates re-run dbDelta. Multisite: activation/uninstall iterate `get_sites()`; new sites get tables via `wp_initialize_site`.
+
 ## CRITICAL DOCUMENTATION PATTERN
 
 **ALWAYS ADD IMPORTANT DOCS HERE!** When you create or discover:

@@ -16,6 +16,8 @@ jobs:
         with:
           php-version: '8.3'
       - run: composer validate --strict
+      # composer.lock is gitignored, so install before auditing.
+      - run: composer install --prefer-dist --no-progress
       - run: composer audit
 
   test:

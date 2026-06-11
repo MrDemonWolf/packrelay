@@ -106,18 +106,33 @@ class PackRelay {
 	 * Register public-facing hooks.
 	 */
 	private function define_public_hooks() {
+		$this->loader->add_action( 'init', $this, 'load_textdomain' );
+		$this->loader->add_action( 'init', 'PackRelay_Activator', 'maybe_upgrade' );
 		$this->loader->add_action( 'rest_api_init', $this->rest_api, 'register_routes' );
 		$this->loader->add_filter( 'rest_pre_serve_request', $this->rest_api, 'add_cors_headers', 10, 4 );
 
 		// Capture Divi front-end form submissions.
 		$this->loader->add_action( 'et_pb_contact_form_submit', $this->divi_submissions, 'save_submission', 10, 3 );
+
+		// Create per-site table when a new multisite site is added.
+		$this->loader->add_action( 'wp_initialize_site', 'PackRelay_Activator', 'initialize_new_site', 10, 1 );
+
+		// Invalidate the settings cache when settings are saved.
+		$this->loader->add_action( 'update_option_' . PackRelay_Settings::OPTION_NAME, 'PackRelay_Settings', 'clear_cache' );
+	}
+
+	/**
+	 * Load the plugin text domain for translations.
+	 */
+	public function load_textdomain() {
+		load_plugin_textdomain( 'packrelay', false, dirname( PACKRELAY_PLUGIN_BASENAME ) . '/languages' );
 	}
 
 	/**
 	 * Show admin notice if the configured provider is not active.
 	 */
 	public function provider_dependency_notice() {
-		if ( get_transient( 'packrelay_provider_notice' ) || ! PackRelay_Activator::is_provider_available() ) {
+		if ( ! PackRelay_Activator::is_provider_available() ) {
 			delete_transient( 'packrelay_provider_notice' );
 
 			$provider = PackRelay_Provider_Factory::create();
