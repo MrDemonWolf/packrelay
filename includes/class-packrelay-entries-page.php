@@ -343,8 +343,9 @@ class PackRelay_Entries_Page {
 		);
 
 		echo '<div class="wrap packrelay-wrap">';
-		echo '<h1>' . esc_html__( 'PackRelay Entries', 'packrelay' ) . '</h1>';
-		echo '<p><a href="' . esc_url( $export_url ) . '" class="button">' . esc_html__( 'Export CSV', 'packrelay' ) . '</a></p>';
+		echo '<h1 class="wp-heading-inline">' . esc_html__( 'PackRelay Entries', 'packrelay' ) . '</h1>';
+		echo '<a href="' . esc_url( $export_url ) . '" class="page-title-action">' . esc_html__( 'Export CSV', 'packrelay' ) . '</a>';
+		echo '<hr class="wp-header-end">';
 		echo '<form method="get">';
 		echo '<input type="hidden" name="page" value="packrelay-entries" />';
 		$list_table->display();
@@ -385,17 +386,21 @@ class PackRelay_Entries_Page {
 			'gravityforms'   => 'Gravity Forms',
 		);
 
-		$source = ( 'divi_frontend' === $entry['provider'] )
-			? __( 'Divi Frontend', 'packrelay' )
-			: __( 'Mobile App', 'packrelay' );
+		if ( 'divi_frontend' === $entry['provider'] ) {
+			$source_label = __( 'Divi Frontend', 'packrelay' );
+			$source_type  = 'frontend';
+		} else {
+			$source_label = __( 'Mobile App', 'packrelay' );
+			$source_type  = 'mobile';
+		}
 
 		echo '<div class="packrelay-detail">';
 		echo '<table class="widefat striped">';
 		echo '<tbody>';
 
 		echo '<tr><th>' . esc_html__( 'ID', 'packrelay' ) . '</th><td>' . absint( $entry['id'] ) . '</td></tr>';
-		echo '<tr><th>' . esc_html__( 'Source', 'packrelay' ) . '</th><td>' . esc_html( $source ) . '</td></tr>';
-		echo '<tr><th>' . esc_html__( 'Provider', 'packrelay' ) . '</th><td>' . esc_html( $provider_labels[ $entry['provider'] ] ?? $entry['provider'] ) . '</td></tr>';
+		echo '<tr><th>' . esc_html__( 'Source', 'packrelay' ) . '</th><td><span class="packrelay-source-badge ' . esc_attr( $source_type ) . '">' . esc_html( $source_label ) . '</span></td></tr>';
+		echo '<tr><th>' . esc_html__( 'Provider', 'packrelay' ) . '</th><td><span class="packrelay-provider-badge">' . esc_html( $provider_labels[ $entry['provider'] ] ?? $entry['provider'] ) . '</span></td></tr>';
 		echo '<tr><th>' . esc_html__( 'Form ID', 'packrelay' ) . '</th><td>' . esc_html( $entry['form_id'] ) . '</td></tr>';
 
 		if ( ! empty( $entry['form_name'] ) ) {

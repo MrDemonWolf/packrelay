@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0] - 2026-06-11
+
+### Added
+- Settings page header card: version badge, active/inactive status pill, provider chip, and GitHub link
+
+### Changed
+- Admin CSS rewritten to WordPress-native system font stack (removes Montserrat/Roboto Google Fonts CDN)
+- Entries list table Source and Provider columns now render colored badge pills
+- Entry detail view Source and Provider rows now render colored badge pills
+- Export CSV button moved to WordPress-native page title action area (inline with page `<h1>`)
+- CI: release workflow verifies plugin version header matches the git tag before running tests
+- CI: release workflow now caches Composer dependencies across PHP matrix jobs
+- CI: build-zip workflow now also triggers on pushes to `main` (not just pull requests)
+
 ## [1.1.0] - 2026-03-14
 
 ### Security

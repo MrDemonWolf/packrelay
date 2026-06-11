@@ -4,7 +4,7 @@ Tags: wpforms, rest-api, forms, firebase, mobile, divi, gravity forms
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -70,6 +70,15 @@ Yes. Since this is a public API for external apps, WordPress nonces are not appl
 
 == Changelog ==
 
+= 1.3.0 =
+* Add settings page header card with version badge, active status, provider chip, and GitHub link
+* Rewrite admin CSS to WordPress-native system fonts (removes Google Fonts CDN)
+* Source and Provider columns in entries list now render colored badge pills
+* Export CSV button moved to native WordPress page title action area
+* CI: verify plugin version matches git tag before release builds
+* CI: cache Composer deps across PHP matrix jobs in release workflow
+* CI: build-zip workflow now also runs on pushes to main
+
 = 1.2.0 =
 * Security: neutralize CSV formula injection in entry exports
 * Fix bulk delete on the entries page (never executed)
@@ -102,6 +111,9 @@ Yes. Since this is a public API for external apps, WordPress nonces are not appl
 * WordPress admin settings page
 
 == Upgrade Notice ==
+
+= 1.3.0 =
+Admin UI improvements and CI/CD hardening. Removes Google Fonts CDN from the admin, adds status header card to settings, and colored source badges on entries.
 
 = 1.2.0 =
 Security and bug-fix release: CSV export hardening, working bulk delete, mobile-app CORS fix, multisite support, and email template support. Recommended for all users.
