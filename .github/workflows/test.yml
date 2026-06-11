@@ -16,8 +16,9 @@ jobs:
         with:
           php-version: '8.3'
       - run: composer validate --strict
-      # --locked: audit the lock file without requiring composer install.
-      - run: composer audit --locked
+      # composer.lock is gitignored, so install before auditing.
+      - run: composer install --prefer-dist --no-progress
+      - run: composer audit
 
   test:
     name: PHP ${{ matrix.php }}
