@@ -4,7 +4,7 @@ Tags: wpforms, rest-api, forms, firebase, mobile, divi, gravity forms
 Requires at least: 6.0
 Tested up to: 6.7
 Requires PHP: 8.1
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -70,6 +70,21 @@ Yes. Since this is a public API for external apps, WordPress nonces are not appl
 
 == Changelog ==
 
+= 1.2.0 =
+* Security: neutralize CSV formula injection in entry exports
+* Fix bulk delete on the entries page (never executed)
+* Wire email notification template settings into Divi notifications
+* Fix CORS for app-scheme origins like capacitor://localhost
+* Store WPForms entries in the native field structure so they render in the WPForms admin
+* Pass entry ID to WPForms notifications so {entry_id} smart tags resolve
+* Support Gravity Forms multi-input fields (Name, Address, Checkbox)
+* Return 400 instead of 500 for validation failures and non-scalar field values
+* Add multisite support for activation, uninstall, and new sites
+* Add database schema upgrade path for plugin updates
+* Lazy-load the Firebase SDK and speed up large CSV exports
+* Remove Google Fonts CDN from the admin (GDPR)
+* Add translation loading, form names on REST entries, and Vary: Origin header
+
 = 1.1.0 =
 * Add support for Divi 5 block-based forms and Gravity Forms
 * Add security fixes: CORS origin sanitization, SQL injection protection, and nonce verification for entry links
@@ -87,6 +102,9 @@ Yes. Since this is a public API for external apps, WordPress nonces are not appl
 * WordPress admin settings page
 
 == Upgrade Notice ==
+
+= 1.2.0 =
+Security and bug-fix release: CSV export hardening, working bulk delete, mobile-app CORS fix, multisite support, and email template support. Recommended for all users.
 
 = 1.1.0 =
 Security and performance update with Divi 5 and Gravity Forms support.
