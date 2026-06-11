@@ -19,6 +19,8 @@ class ActivatorTest extends TestCase {
 		$wpdb = \Mockery::mock();
 		$wpdb->prefix = 'wp_';
 		$wpdb->shouldReceive( 'get_charset_collate' )->andReturn( '' )->byDefault();
+
+		Functions\when( 'is_multisite' )->justReturn( false );
 	}
 
 	public function test_activate_sets_default_options_when_none_exist(): void {
@@ -73,8 +75,10 @@ class ActivatorTest extends TestCase {
 
 		$updated = false;
 		Functions\when( 'update_option' )->alias(
-			function () use ( &$updated ) {
-				$updated = true;
+			function ( $key ) use ( &$updated ) {
+				if ( 'packrelay_settings' === $key ) {
+					$updated = true;
+				}
 			}
 		);
 
@@ -83,7 +87,7 @@ class ActivatorTest extends TestCase {
 
 		\PackRelay_Activator::activate();
 
-		$this->assertFalse( $updated, 'update_option should not be called when settings exist' );
+		$this->assertFalse( $updated, 'update_option should not overwrite packrelay_settings when it exists' );
 	}
 
 	public function test_activate_defaults_include_form_provider(): void {

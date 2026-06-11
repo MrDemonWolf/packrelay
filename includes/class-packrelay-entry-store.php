@@ -47,7 +47,7 @@ class PackRelay_Entry_Store {
 			fields longtext NOT NULL,
 			ip_address varchar(45) NOT NULL DEFAULT '',
 			user_agent text NOT NULL,
-			date_created datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
+			date_created datetime NOT NULL,
 			PRIMARY KEY  (id),
 			KEY provider (provider),
 			KEY form_id (form_id),
@@ -109,6 +109,7 @@ class PackRelay_Entry_Store {
 			'page_id'   => 0,
 			'per_page'  => 20,
 			'offset'    => 0,
+			'since_id'  => 0,
 			'orderby'   => 'id',
 			'order'     => 'DESC',
 		);
@@ -141,6 +142,12 @@ class PackRelay_Entry_Store {
 		if ( ! empty( $args['exclude_provider'] ) ) {
 			$where[]  = 'provider != %s';
 			$values[] = $args['exclude_provider'];
+		}
+
+		// Keyset pagination cursor (use with orderby id ASC).
+		if ( ! empty( $args['since_id'] ) ) {
+			$where[]  = 'id > %d';
+			$values[] = absint( $args['since_id'] );
 		}
 
 		$where_sql = '';

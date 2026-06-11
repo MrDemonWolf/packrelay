@@ -179,7 +179,8 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 
 		$preview = array();
 		foreach ( $fields as $key => $value ) {
-			$preview[] = esc_html( $key ) . ': ' . esc_html( mb_strimwidth( (string) $value, 0, 30, '...' ) );
+			$value     = is_scalar( $value ) ? (string) $value : wp_json_encode( $value );
+			$preview[] = esc_html( $key ) . ': ' . esc_html( mb_strimwidth( $value, 0, 30, '...' ) );
 		}
 
 		return implode( '<br>', array_slice( $preview, 0, 3 ) );

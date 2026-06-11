@@ -20,7 +20,7 @@ class PackRelay_AppCheck {
 	/**
 	 * Firebase Factory instance.
 	 *
-	 * @var \Kreait\Firebase\Factory
+	 * @var \Kreait\Firebase\Factory|null
 	 */
 	private $factory;
 
@@ -30,7 +30,23 @@ class PackRelay_AppCheck {
 	 * @param \Kreait\Firebase\Factory|null $factory Optional factory for DI/testing.
 	 */
 	public function __construct( $factory = null ) {
-		$this->factory = $factory ?: new \Kreait\Firebase\Factory();
+		$this->factory = $factory;
+	}
+
+	/**
+	 * Lazily create the Firebase factory.
+	 *
+	 * Instantiated on first verify() call only, so the kreait SDK is not
+	 * loaded on every page view.
+	 *
+	 * @return \Kreait\Firebase\Factory
+	 */
+	private function get_factory() {
+		if ( null === $this->factory ) {
+			$this->factory = new \Kreait\Firebase\Factory();
+		}
+
+		return $this->factory;
 	}
 
 	/**
@@ -61,7 +77,7 @@ class PackRelay_AppCheck {
 		}
 
 		try {
-			$app_check = $this->factory
+			$app_check = $this->get_factory()
 				->withProjectId( $project_id )
 				->createAppCheck();
 

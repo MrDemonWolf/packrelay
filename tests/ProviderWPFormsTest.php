@@ -140,8 +140,9 @@ class ProviderWPFormsTest extends TestCase {
 			->with(
 				\Mockery::on(
 					function ( $data ) {
+						// Fields are stored in WPForms' native structure.
 						$fields = json_decode( $data['fields'], true );
-						return 'Clean' === $fields[1];
+						return 'Clean' === ( $fields[1]['value'] ?? null );
 					}
 				)
 			)

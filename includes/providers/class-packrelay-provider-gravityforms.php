@@ -47,6 +47,25 @@ class PackRelay_Provider_GravityForms extends PackRelay_Provider {
 		$fields = array();
 		if ( ! empty( $form['fields'] ) ) {
 			foreach ( $form['fields'] as $field ) {
+				// Multi-input fields (Name, Address, Checkbox) only accept
+				// values on their sub-input IDs (e.g. "1.3"), so expose those.
+				$inputs = is_object( $field ) ? ( $field->inputs ?? null ) : null;
+				if ( ! empty( $inputs ) && is_array( $inputs ) ) {
+					foreach ( $inputs as $input ) {
+						if ( ! empty( $input['isHidden'] ) ) {
+							continue;
+						}
+						$sub_label = $input['label'] ?? '';
+						$fields[]  = array(
+							'id'       => (string) ( $input['id'] ?? '' ),
+							'type'     => $field->type ?? '',
+							'label'    => trim( ( $field->label ?? '' ) . ( $sub_label ? ' — ' . $sub_label : '' ) ),
+							'required' => ! empty( $field->isRequired ),
+						);
+					}
+					continue;
+				}
+
 				$fields[] = array(
 					'id'       => (string) $field->id,
 					'type'     => $field->type ?? '',
@@ -125,9 +144,11 @@ class PackRelay_Provider_GravityForms extends PackRelay_Provider {
 		$fields = apply_filters( 'packrelay_pre_save_fields', $fields, $form_id, $request );
 
 		// Map field_id => value to GF's input_FIELDID => value format.
+		// Sub-input IDs use dots ("1.3") but GF expects underscores ("input_1_3").
 		$input_values = array();
 		foreach ( $fields as $field_id => $value ) {
-			$input_values[ 'input_' . $field_id ] = sanitize_text_field( $value );
+			$input_key                  = 'input_' . str_replace( '.', '_', (string) $field_id );
+			$input_values[ $input_key ] = sanitize_text_field( $value );
 		}
 
 		// Bypass reCAPTCHA validation since App Check replaces it.
@@ -159,10 +180,17 @@ class PackRelay_Provider_GravityForms extends PackRelay_Provider {
 			);
 		}
 
+		// Validation failure is a client error, not a server error.
+		$message = __( 'Gravity Forms validation failed.', 'packrelay' );
+		if ( ! empty( $result['validation_messages'] ) && is_array( $result['validation_messages'] ) ) {
+			$message .= ' ' . implode( ' ', array_map( 'sanitize_text_field', $result['validation_messages'] ) );
+		}
+
 		return array(
 			'success' => false,
-			'code'    => 'entry_failed',
-			'message' => __( 'Gravity Forms validation failed.', 'packrelay' ),
+			'code'    => 'validation_failed',
+			'message' => $message,
+			'status'  => 400,
 		);
 	}
 

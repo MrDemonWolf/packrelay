@@ -125,6 +125,9 @@ class ProviderDiviTest extends TestCase {
 		$wpdb->insert_id = 5;
 		$wpdb->shouldReceive( 'insert' )->once()->andReturn( 1 );
 
+		// create_entry resolves the form title for form_name.
+		Functions\when( 'get_post' )->justReturn( null );
+
 		Functions\expect( 'apply_filters' )
 			->with( 'packrelay_pre_save_fields', \Mockery::any(), '42:0', \Mockery::any() )
 			->andReturnUsing( function ( $hook, $fields ) {
@@ -168,7 +171,8 @@ class ProviderDiviTest extends TestCase {
 			->with(
 				'test@example.com',
 				\Mockery::on( function ( $subject ) {
-					return str_contains( $subject, 'PackRelay' );
+					// Default template: "New {form_name} submission from {site_name}".
+					return str_contains( $subject, 'Contact' ) && str_contains( $subject, 'Test Site' );
 				} ),
 				\Mockery::type( 'string' ),
 				\Mockery::type( 'array' )

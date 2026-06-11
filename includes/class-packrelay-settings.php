@@ -364,10 +364,11 @@ class PackRelay_Settings {
 		$valid_providers = array( 'divi', 'wpforms', 'gravityforms' );
 		$provider        = sanitize_text_field( $input['form_provider'] ?? 'divi' );
 
-		// Reject disabled (unavailable) providers.
+		// Reject disabled (unavailable) providers — keep the saved value.
 		$disabled = $this->get_disabled_providers();
 		if ( in_array( $provider, $disabled, true ) ) {
-			$provider = 'divi';
+			$existing = get_option( self::OPTION_NAME, array() );
+			$provider = $existing['form_provider'] ?? 'divi';
 		}
 
 		$sanitized['form_provider'] = in_array( $provider, $valid_providers, true ) ? $provider : 'divi';

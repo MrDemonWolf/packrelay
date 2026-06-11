@@ -1,6 +1,6 @@
 {
 	"name": "mrdemonwolf/packrelay",
-	"description": "Accept WPForms submissions from external apps and mobile clients via REST API with Firebase App Check protection.",
+	"description": "Accept form submissions from external apps and mobile clients via REST API with Firebase App Check protection. Supports Divi, WPForms, and Gravity Forms.",
 	"type": "wordpress-plugin",
 	"license": "GPL-2.0-or-later",
 	"authors": [

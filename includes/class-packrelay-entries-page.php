@@ -71,16 +71,9 @@ class PackRelay_Entries_Page {
 		}
 
 		wp_enqueue_style(
-			'packrelay-google-fonts',
-			'https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Roboto:wght@400;500&display=swap',
-			array(),
-			null
-		);
-
-		wp_enqueue_style(
 			'packrelay-admin',
 			PACKRELAY_PLUGIN_URL . 'assets/css/packrelay-admin.css',
-			array( 'packrelay-google-fonts' ),
+			array(),
 			PACKRELAY_VERSION
 		);
 
@@ -176,18 +169,22 @@ class PackRelay_Entries_Page {
 
 		$store      = new PackRelay_Entry_Store();
 		$chunk_size = 500;
-		$offset     = 0;
 
-		// First pass: collect all unique field labels.
+		// First pass: collect all unique field labels (keyset pagination —
+		// LIMIT/OFFSET degrades to O(n²) row reads on large tables).
 		$all_labels = array();
+		$since_id   = 0;
 		do {
 			$chunk = $store->get_entries( array_merge( $base_args, array(
 				'per_page' => $chunk_size,
-				'offset'   => $offset,
+				'since_id' => $since_id,
+				'orderby'  => 'id',
+				'order'    => 'ASC',
 			) ) );
 
 			foreach ( $chunk as $entry ) {
-				$fields = json_decode( $entry['fields'], true );
+				$since_id = (int) $entry['id'];
+				$fields   = json_decode( $entry['fields'], true );
 				if ( is_array( $fields ) ) {
 					foreach ( array_keys( $fields ) as $label ) {
 						if ( ! in_array( $label, $all_labels, true ) ) {
@@ -196,8 +193,6 @@ class PackRelay_Entries_Page {
 					}
 				}
 			}
-
-			$offset += $chunk_size;
 		} while ( count( $chunk ) === $chunk_size );
 
 		$filename = 'packrelay-entries-' . gmdate( 'Y-m-d' ) . '.csv';
@@ -215,22 +210,25 @@ class PackRelay_Entries_Page {
 		// Header row.
 		$headers = array_merge(
 			array( 'ID', 'Source', 'Provider', 'Form ID', 'Form Name', 'Page', 'Date', 'IP Address' ),
-			$all_labels
+			array_map( array( $this, 'sanitize_csv_cell' ), $all_labels )
 		);
 		fputcsv( $output, $headers );
 
 		// Second pass: stream data rows in chunks.
-		$offset = 0;
+		$since_id = 0;
 		do {
 			$chunk = $store->get_entries( array_merge( $base_args, array(
 				'per_page' => $chunk_size,
-				'offset'   => $offset,
+				'since_id' => $since_id,
+				'orderby'  => 'id',
+				'order'    => 'ASC',
 			) ) );
 
 			foreach ( $chunk as $entry ) {
-				$fields = json_decode( $entry['fields'], true );
-				$source = ( 'divi_frontend' === $entry['provider'] ) ? 'Divi Frontend' : 'Mobile App';
-				$row    = array(
+				$since_id = (int) $entry['id'];
+				$fields   = json_decode( $entry['fields'], true );
+				$source   = ( 'divi_frontend' === $entry['provider'] ) ? 'Divi Frontend' : 'Mobile App';
+				$row      = array(
 					$entry['id'],
 					$source,
 					$entry['provider'],
@@ -242,21 +240,37 @@ class PackRelay_Entries_Page {
 				);
 
 				foreach ( $all_labels as $label ) {
-					$row[] = isset( $fields[ $label ] ) ? $fields[ $label ] : '';
+					$value = isset( $fields[ $label ] ) ? $fields[ $label ] : '';
+					$row[] = is_scalar( $value ) ? (string) $value : wp_json_encode( $value );
 				}
 
-				fputcsv( $output, $row );
+				fputcsv( $output, array_map( array( $this, 'sanitize_csv_cell' ), $row ) );
 			}
 
-			if ( 0 === $offset % 2000 ) {
-				flush();
-			}
-
-			$offset += $chunk_size;
+			flush();
 		} while ( count( $chunk ) === $chunk_size );
 
 		fclose( $output );
 		exit;
+	}
+
+	/**
+	 * Neutralize spreadsheet formula injection in a CSV cell.
+	 *
+	 * Submitted field values are untrusted; a leading =, +, -, @, tab, or CR
+	 * would be interpreted as a formula by Excel/LibreOffice/Sheets (CWE-1236).
+	 *
+	 * @param mixed $value The cell value.
+	 * @return string
+	 */
+	public function sanitize_csv_cell( $value ) {
+		$value = (string) $value;
+
+		if ( '' !== $value && in_array( $value[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+			$value = "'" . $value;
+		}
+
+		return $value;
 	}
 
 	/**
@@ -279,20 +293,22 @@ class PackRelay_Entries_Page {
 	 * Handle bulk actions.
 	 */
 	private function handle_bulk_actions() {
-		if ( empty( $_POST['entry_ids'] ) || empty( $_POST['action'] ) ) {
+		// The list table renders inside a GET form, so bulk-action fields
+		// arrive in $_GET; read $_REQUEST to support either method.
+		if ( empty( $_REQUEST['entry_ids'] ) || ! is_array( $_REQUEST['entry_ids'] ) ) {
 			return;
 		}
 
-		if ( 'delete' !== $_POST['action'] && 'delete' !== ( $_POST['action2'] ?? '' ) ) {
+		if ( 'delete' !== ( $_REQUEST['action'] ?? '' ) && 'delete' !== ( $_REQUEST['action2'] ?? '' ) ) {
 			return;
 		}
 
-		if ( ! wp_verify_nonce( $_POST['_wpnonce'] ?? '', 'bulk-entries' ) ) {
+		if ( ! wp_verify_nonce( $_REQUEST['_wpnonce'] ?? '', 'bulk-entries' ) ) {
 			return;
 		}
 
 		$store = new PackRelay_Entry_Store();
-		$ids   = array_map( 'absint', $_POST['entry_ids'] );
+		$ids   = array_map( 'absint', $_REQUEST['entry_ids'] );
 
 		foreach ( $ids as $id ) {
 			$store->delete_entry( $id );
@@ -412,7 +428,7 @@ class PackRelay_Entries_Page {
 			foreach ( $fields as $field_id => $value ) {
 				echo '<tr>';
 				echo '<td>' . esc_html( $field_id ) . '</td>';
-				echo '<td>' . esc_html( $value ) . '</td>';
+				echo '<td>' . esc_html( is_scalar( $value ) ? (string) $value : wp_json_encode( $value ) ) . '</td>';
 				echo '</tr>';
 			}
 

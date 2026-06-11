@@ -143,6 +143,33 @@ class RestApiTest extends TestCase {
 		$this->assertSame( 'missing_fields', $response->data['code'] );
 	}
 
+	public function test_submit_rejects_non_scalar_field_values(): void {
+		Functions\expect( 'apply_filters' )
+			->with( 'packrelay_allowed_form_ids', \Mockery::any() )
+			->andReturnUsing( function ( $hook, $ids ) {
+				return $ids;
+			} );
+
+		$this->mock_provider->shouldReceive( 'get_form' )
+			->with( '123' )
+			->andReturn( array( 'title' => 'Test', 'fields' => array() ) );
+
+		$this->mock_appcheck->shouldReceive( 'verify' )
+			->with( 'valid-token', '123' )
+			->once()
+			->andReturn( array( 'success' => true, 'app_id' => 'test-app' ) );
+
+		$request = new \WP_REST_Request( 'POST', '/packrelay/v1/submit/123' );
+		$request->set_param( 'form_id', '123' );
+		$request->set_param( 'app_check_token', 'valid-token' );
+		$request->set_param( 'fields', array( '1' => array( 'nested' => 'array' ) ) );
+
+		$response = $this->rest_api->handle_submit( $request );
+
+		$this->assertSame( 400, $response->status );
+		$this->assertSame( 'invalid_fields', $response->data['code'] );
+	}
+
 	public function test_handle_options_returns_200(): void {
 		$response = $this->rest_api->handle_options();
 
@@ -181,6 +208,16 @@ class RestApiTest extends TestCase {
 						array( 'id' => '1', 'type' => 'name', 'label' => 'Name', 'required' => true ),
 						array( 'id' => '2', 'type' => 'email', 'label' => 'Email', 'required' => true ),
 					),
+				)
+			);
+
+		// handle_get_fields returns the normalized accessor output.
+		$this->mock_provider->shouldReceive( 'get_fields' )
+			->with( '123' )
+			->andReturn(
+				array(
+					array( 'id' => '1', 'type' => 'name', 'label' => 'Name', 'required' => true ),
+					array( 'id' => '2', 'type' => 'email', 'label' => 'Email', 'required' => true ),
 				)
 			);
 

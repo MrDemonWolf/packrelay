@@ -44,4 +44,20 @@ class EntriesPageTest extends TestCase {
 
 		$this->page->add_menu_pages();
 	}
+
+	public function test_sanitize_csv_cell_neutralizes_formula_triggers(): void {
+		$this->assertSame( "'=HYPERLINK(\"http://evil\")", $this->page->sanitize_csv_cell( '=HYPERLINK("http://evil")' ) );
+		$this->assertSame( "'+cmd", $this->page->sanitize_csv_cell( '+cmd' ) );
+		$this->assertSame( "'-1+1", $this->page->sanitize_csv_cell( '-1+1' ) );
+		$this->assertSame( "'@SUM(A1)", $this->page->sanitize_csv_cell( '@SUM(A1)' ) );
+		$this->assertSame( "'\tx", $this->page->sanitize_csv_cell( "\tx" ) );
+		$this->assertSame( "'\rx", $this->page->sanitize_csv_cell( "\rx" ) );
+	}
+
+	public function test_sanitize_csv_cell_leaves_safe_values_unchanged(): void {
+		$this->assertSame( 'John Doe', $this->page->sanitize_csv_cell( 'John Doe' ) );
+		$this->assertSame( 'john@example.com', $this->page->sanitize_csv_cell( 'john@example.com' ) );
+		$this->assertSame( '', $this->page->sanitize_csv_cell( '' ) );
+		$this->assertSame( '42', $this->page->sanitize_csv_cell( 42 ) );
+	}
 }
