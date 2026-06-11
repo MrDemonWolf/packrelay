@@ -16,7 +16,8 @@ jobs:
         with:
           php-version: '8.3'
       - run: composer validate --strict
-      - run: composer audit
+      # --locked: audit the lock file without requiring composer install.
+      - run: composer audit --locked
 
   test:
     name: PHP ${{ matrix.php }}
