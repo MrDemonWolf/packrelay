@@ -60,4 +60,42 @@ class EntriesPageTest extends TestCase {
 		$this->assertSame( '', $this->page->sanitize_csv_cell( '' ) );
 		$this->assertSame( '42', $this->page->sanitize_csv_cell( 42 ) );
 	}
+
+	public function test_sanitize_csv_cell_casts_numeric_types_to_string(): void {
+		$this->assertSame( '0', $this->page->sanitize_csv_cell( 0 ) );
+		$this->assertSame( '3.14', $this->page->sanitize_csv_cell( 3.14 ) );
+	}
+
+	public function test_get_view_url_includes_entry_id_and_nonce(): void {
+		Functions\when( 'admin_url' )->justReturn( 'http://example.com/wp-admin/admin.php' );
+		Functions\when( 'add_query_arg' )->alias(
+			function ( $args, $url ) {
+				return $url . '?' . http_build_query( $args );
+			}
+		);
+		Functions\when( 'wp_nonce_url' )->alias(
+			function ( $url, $action ) {
+				return $url . '&_wpnonce=testhash';
+			}
+		);
+
+		$url = \PackRelay_Entries_Page::get_view_url( 7 );
+
+		$this->assertStringContainsString( 'entry_id=7', $url );
+		$this->assertStringContainsString( 'action=view', $url );
+		$this->assertStringContainsString( '_wpnonce=', $url );
+	}
+
+	public function test_get_view_url_casts_entry_id_to_positive_int(): void {
+		Functions\when( 'admin_url' )->justReturn( 'http://example.com/wp-admin/admin.php' );
+		Functions\when( 'add_query_arg' )->alias(
+			function ( $args, $url ) {
+				return $url . '?' . http_build_query( $args );
+			}
+		);
+		Functions\when( 'wp_nonce_url' )->returnArg();
+
+		$url = \PackRelay_Entries_Page::get_view_url( '5abc' );
+		$this->assertStringContainsString( 'entry_id=5', $url );
+	}
 }
