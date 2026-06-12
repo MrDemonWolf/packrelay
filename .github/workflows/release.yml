@@ -5,8 +5,25 @@ on:
     types: [published]
 
 jobs:
+  verify:
+    name: Verify Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check plugin version matches tag
+        run: |
+          PLUGIN_VERSION=$(grep -m1 "^ \* Version:" packrelay.php | tr -d ' ' | cut -d: -f2)
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          if [ "$PLUGIN_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::Version mismatch — plugin header: $PLUGIN_VERSION, tag: $TAG_VERSION"
+            exit 1
+          fi
+          echo "Version OK: $PLUGIN_VERSION"
+
   test:
     name: PHP ${{ matrix.php }}
+    needs: verify
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -20,6 +37,13 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ matrix.php }}-${{ hashFiles('**/composer.json') }}
+          restore-keys: composer-${{ matrix.php }}-
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress

@@ -132,10 +132,10 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 	 */
 	public function column_source( $item ) {
 		if ( 'divi_frontend' === $item['provider'] ) {
-			return esc_html__( 'Divi Frontend', 'packrelay' );
+			return '<span class="packrelay-source-badge frontend">' . esc_html__( 'Divi Frontend', 'packrelay' ) . '</span>';
 		}
 
-		return esc_html__( 'Mobile App', 'packrelay' );
+		return '<span class="packrelay-source-badge mobile">' . esc_html__( 'Mobile App', 'packrelay' ) . '</span>';
 	}
 
 	/**
@@ -152,7 +152,7 @@ class PackRelay_Entries_List_Table extends \WP_List_Table {
 			'gravityforms'   => 'Gravity Forms',
 		);
 
-		return esc_html( $labels[ $item['provider'] ] ?? $item['provider'] );
+		return '<span class="packrelay-provider-badge">' . esc_html( $labels[ $item['provider'] ] ?? $item['provider'] ) . '</span>';
 	}
 
 	/**
